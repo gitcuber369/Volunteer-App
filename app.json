@@ -4,18 +4,26 @@
     "slug": "Volunteer-App",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icons.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": {
+        "dark": "./assets/images/icons/Dark.png",
+        "light": "./assets/images/icons/Light.png",
+        "tinted": "./assets/images/icons/Tinted.png"
+      },
+      "bundleIdentifier": "com.gitcuber369rn.VolunteerApp"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/icons/adaptive-icon.png",
+        "monochromeImage": "./assets/images/icons/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.gitcuber369rn.VolunteerApp"
     },
     "web": {
       "bundler": "metro",
@@ -27,15 +35,27 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/icons/splash-icon-light.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "image": "./assets/images/icons/splash-icon-light.png",
+            "backgroundColor": "#000000"
+          }
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "9c4ef2f6-0625-45c7-b871-ca342b91a1ff"
+      }
     }
   }
 }
