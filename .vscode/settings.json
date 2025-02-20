@@ -1,0 +1,26 @@
+{
+  "editor.cursorStyle": "block",
+  "editor.cursorBlinking": "smooth",
+  "editor.cursorSmoothCaretAnimation": "on",
+  "files.autoSave": "afterDelay",
+  "colorize.colorized_variables": ["CSS"],
+  "colorize.languages": [
+    "css",
+    "sass",
+    "scss",
+    "less",
+    "postcss",
+    "sss",
+    "stylus",
+    "xml",
+    "svg",
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact",
+    "json",
+    "jsonc",
+    "json5",
+    "jsonc"
+  ]
+}
