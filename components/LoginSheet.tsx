@@ -8,20 +8,18 @@ const LoginSheet = () => {
   return (
     <View style={[styles.container, { paddingBottom: bottom }]}>
       <TouchableOpacity style={[styles.btnLight, defaultStyles.btn]}>
-        <Text style={[styles.btnText,  {color: '#000'}]}>Log In</Text>
+        <Text style={[styles.btnText]}>Log In</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[
           defaultStyles.btn,
           {
-            borderColor: "rgba(144, 238, 144, 1))",
-            borderWidth: 2,
+            borderColor: "rgba(186, 85, 211, 1)",
+            borderWidth: 3,
           },
         ]}
       >
-        <Text style={[styles.btnText, { color: "rgba(144, 238, 144, 1)" }]}>
-          Register
-        </Text>
+        <Text style={[styles.btnText]}>Register</Text>
       </TouchableOpacity>
       <View style={styles.dividerContainer}>
         <View style={styles.divider} />
@@ -55,7 +53,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
   },
   btnLight: {
-    backgroundColor: "rgba(144, 238, 144, 1)",
+    backgroundColor: "rgba(186, 85, 211, 1)",
   },
   btnIcon: {
     paddingRight: 6,
@@ -65,7 +63,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: "#fff",
   },
-  dividerContainer: {
+  dividerContainer: {   
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

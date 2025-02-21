@@ -4,7 +4,7 @@
     "slug": "Volunteer-App",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icons.png",
+    "icon": "./assets/images/icons/splash-icon-light.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -55,7 +55,7 @@
       },
       "eas": {
         "projectId": "9c4ef2f6-0625-45c7-b871-ca342b91a1ff"
-      }
+      }   
     }
   }
 }

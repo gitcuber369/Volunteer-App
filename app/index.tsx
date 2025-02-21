@@ -26,7 +26,7 @@ const Index = () => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "rgba(144, 238, 144, 0.5)",
+    backgroundColor: "rgba(138, 43, 226, 0.2)",
     flex: 1,
     alignItems: "center",
     paddingTop: 80,
