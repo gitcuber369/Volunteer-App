@@ -14,8 +14,9 @@ const LoginSheet = () => {
         style={[
           defaultStyles.btn,
           {
-            borderColor: "rgba(186, 85, 211, 1)",
+            borderColor: "rgba(87,64,239, 1)",
             borderWidth: 3,
+            backgroundColor: "rgba(87,64,239, 1)",
           },
         ]}
       >
@@ -53,7 +54,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
   },
   btnLight: {
-    backgroundColor: "rgba(186, 85, 211, 1)",
+    backgroundColor: "rgba(87,64,239, 1)",
   },
   btnIcon: {
     paddingRight: 6,
@@ -63,7 +64,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: "#fff",
   },
-  dividerContainer: {   
+  dividerContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

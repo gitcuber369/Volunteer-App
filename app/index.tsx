@@ -26,7 +26,7 @@ const Index = () => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "rgba(138, 43, 226, 0.2)",
+    backgroundColor: "#fff",
     flex: 1,
     alignItems: "center",
     paddingTop: 80,
@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
   icons: {
     width: 250, // Reduce size if needed
     height: 250,
-    resizeMode: "contain", // Ensures image doesn’t stretch
+    resizeMode: "contain",
   },
   description: {
     fontSize: 20,
