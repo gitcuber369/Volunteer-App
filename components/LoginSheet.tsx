@@ -1,13 +1,31 @@
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import React from "react";
+import React, { useRef } from "react";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { defaultStyles } from "@/constants/Styles";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import BottomSheetChoose from "./BottomSheetChoose";
+import BottomSheet from "@gorhom/bottom-sheet";
+import { router, useNavigation } from "expo-router";
 const LoginSheet = () => {
   const { bottom } = useSafeAreaInsets();
+  const bottomSheetRef = useRef<BottomSheet>(null);
+
+  const navigation = useNavigation();
+
+  const handleRoleSelect = (role) => {
+    bottomSheetRef.current?.close();
+    router.replace({
+      pathname: "/(tabs)/Home/HomeScreen",
+      params: { role },
+    });
+  };
+
   return (
     <View style={[styles.container, { paddingBottom: bottom }]}>
-      <TouchableOpacity style={[styles.btnLight, defaultStyles.btn]}>
+      <TouchableOpacity
+        onPress={() => bottomSheetRef.current?.expand()}
+        style={[styles.btnLight, defaultStyles.btn]}
+      >
         <Text style={[styles.btnText]}>Log In</Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -36,6 +54,7 @@ const LoginSheet = () => {
       <Text style={styles.termsText}>
         By signing in, you are accepting the Terms and Conditions.
       </Text>
+      <BottomSheetChoose ref={bottomSheetRef} />
     </View>
   );
 };
