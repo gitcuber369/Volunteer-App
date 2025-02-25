@@ -14,6 +14,7 @@ import AdminHome from "./Home/AdminHome";
 import TeamLead from "./Home/TeamLead";
 import VolunteerHome from "./Home/VolunteerHome";
 import { Colors } from "@/constants/Colors";
+import { BlurView } from "expo-blur";
 const Tab = createBottomTabNavigator();
 
 export default function BottomTabNavigator() {
@@ -41,11 +42,43 @@ export default function BottomTabNavigator() {
         headerShown: false,
         tabBarShowLabel: true,
         tabBarHideOnKeyboard: true,
-        tabBarStyle: { height: 60, backgroundColor: "#000" , borderStyle: "solid", borderTopWidth: 1, borderTopColor: 'black'},
-        tabBarIconStyle: { fontSize: 28 },
-        tabBarActiveTintColor: "white",
+        tabBarStyle: {
+          height: 80,
+          borderStyle: "solid",
+          borderTopWidth: 1,
+          borderTopColor: "#eee",
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: "transparent",
+          elevation: 0,
+          shadowOpacity: 0,
+          paddingBottom: 8,
+        },
+        tabBarBackground: () => (
+          <BlurView
+            intensity={50}
+            tint="light"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+            }}
+          />
+        ),
+        tabBarIconStyle: {
+          marginTop: 4,
+        },
+        tabBarActiveTintColor: Colors.light.primaryColor,
+        tabBarInactiveTintColor: "#999",
+        tabBarLabelStyle: {
+          fontSize: 12,
+          marginBottom: 4,
+        },
       }}
-    
     >
       <Tab.Screen
         name="Home"
@@ -76,7 +109,7 @@ export default function BottomTabNavigator() {
                 left: 0,
                 right: 0,
                 marginHorizontal: "auto",
-                backgroundColor: Colors.dark.primaryColor,
+                backgroundColor: Colors.light.primaryColor,
                 borderRadius: 50,
                 width: 50,
                 height: 50,
@@ -85,7 +118,7 @@ export default function BottomTabNavigator() {
                   width: 2,
                   height: 2,
                 },
-                shadowOpacity: 1,
+                shadowOpacity: 0.3,
                 shadowRadius: 3.84,
                 elevation: 2,
                 justifyContent: "center",
