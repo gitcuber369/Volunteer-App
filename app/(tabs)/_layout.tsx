@@ -39,8 +39,11 @@ export default function BottomTabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
+        animation: "fade",
         headerShown: false,
         tabBarShowLabel: true,
+        tabBarLabelPosition: "below-icon",
+        lazy: false, // Loads screens eagerly for smoother transitions
         tabBarHideOnKeyboard: true,
         tabBarStyle: {
           height: 80,
