@@ -213,7 +213,7 @@ const Header = () => {
       ]}
     >
       <Animated.Image
-        source={require("@/assets/images/icons/icon.png")}
+        source={require("@/assets/images/icon/icon.png")}
         style={[{ width: 64, height: 64 }, iconAnimatedStyle]}
         resizeMode="cover"
       />
@@ -250,18 +250,20 @@ const Header = () => {
               />
               <View
                 style={{
-                  position: 'absolute',
+                  position: "absolute",
                   right: -6,
                   top: -6,
-                  backgroundColor: '#ef4444',
+                  backgroundColor: "#ef4444",
                   borderRadius: 10,
                   minWidth: 20,
                   height: 20,
-                  justifyContent: 'center',
-                  alignItems: 'center',
+                  justifyContent: "center",
+                  alignItems: "center",
                 }}
               >
-                <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>
+                <Text
+                  style={{ color: "white", fontSize: 12, fontWeight: "600" }}
+                >
                   3
                 </Text>
               </View>
@@ -302,7 +304,7 @@ const UserGreeting = () => (
         width: 72,
         height: 72,
         borderRadius: 36,
-        marginRight: 16
+        marginRight: 16,
       }}
       resizeMode="cover"
     />
@@ -312,7 +314,7 @@ const UserGreeting = () => (
           color: Colors.light.text,
           fontSize: 22,
           fontWeight: "700",
-          marginBottom: 4
+          marginBottom: 4,
         }}
       >
         {getGreeting()}
@@ -321,7 +323,7 @@ const UserGreeting = () => (
         style={{
           flexDirection: "row",
           alignItems: "center",
-          marginBottom: 8
+          marginBottom: 8,
         }}
       >
         <Text
@@ -329,7 +331,7 @@ const UserGreeting = () => (
             color: "#9ca3af",
             fontSize: 16,
             fontWeight: "600",
-            marginRight: 8
+            marginRight: 8,
           }}
         >
           {users[1].name}
@@ -342,14 +344,20 @@ const UserGreeting = () => (
           borderColor="transparent"
         />
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginRight: 16,
+          }}
+        >
           <Ionicons name="business-outline" size={16} color="#9ca3af" />
           <Text style={{ marginLeft: 4, color: "#9ca3af", fontSize: 14 }}>
             St. Mary's Church
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
           <Ionicons name="location-outline" size={16} color="#9ca3af" />
           <Text style={{ marginLeft: 4, color: "#9ca3af", fontSize: 14 }}>
             Los Angeles, CA

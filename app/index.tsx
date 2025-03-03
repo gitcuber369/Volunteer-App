@@ -11,7 +11,7 @@ const Index = () => {
   return (
     <View style={styles.container}>
       <Image
-        source={require("@/assets/images/icons/splash-icon-light.png")}
+        source={require("@/assets/images/icon/splash-icon-light.png")}
         style={styles.icons}
       />
       <Text style={styles.description}>
