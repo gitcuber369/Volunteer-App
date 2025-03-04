@@ -65,7 +65,7 @@ const OneToOneChats = () => {
                 {chat.unreadCount > 0 && (
                   <View
                     style={{
-                      backgroundColor: Colors.light.tint,
+                      backgroundColor: Colors.light.primaryColor,
                       borderRadius: 10,
                       padding: 4,
                       marginTop: 4,
@@ -97,7 +97,14 @@ const OneToOneChats = () => {
 
 const GroupChats = () => {
   return (
-    <View className="flex-1 bg-white p-4">
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: Colors.light.background,
+        padding: 16,
+      }}
+      className="flex-1 p-4"
+    >
       <FlatList
         data={groupChats}
         showsVerticalScrollIndicator={false}
@@ -111,7 +118,7 @@ const GroupChats = () => {
               })
             }
             android_ripple={{ color: "rgba(0,0,0,0.05)" }}
-            className="flex-row items-center bg-white p-4 rounded-xl mb-3 border border-gray-200"
+            className="flex-row items-center p-4 rounded-xl mb-3 border border-gray-200"
             style={({ pressed }) => (pressed ? { opacity: 0.7 } : {})}
           >
             {/* Group Icon */}
@@ -128,7 +135,7 @@ const GroupChats = () => {
               <Text
                 style={{
                   fontSize: 20,
-                  color: Colors.light.tint,
+                  color: Colors.light.primaryColor,
                   fontWeight: "600",
                 }}
               >
@@ -170,7 +177,7 @@ const GroupChats = () => {
                 {item.unreadCount > 0 && (
                   <View
                     className="rounded-full px-2 py-0.5 items-center justify-center ml-3"
-                    style={{ backgroundColor: Colors.light.tint }}
+                    style={{ backgroundColor: Colors.light.primaryColor }}
                   >
                     <Text className="text-white text-xs font-bold">
                       {item.unreadCount}
@@ -195,9 +202,9 @@ const Chats = () => {
     <View style={{ flex: 1, paddingTop: useSafeAreaInsets().top }}>
       <Tab.Navigator
         screenOptions={{
-          tabBarActiveTintColor: Colors.light.tint,
+          tabBarActiveTintColor: Colors.light.primaryColor,
           tabBarInactiveTintColor: "#666",
-          tabBarIndicatorStyle: { backgroundColor: Colors.light.tint },
+          tabBarIndicatorStyle: { backgroundColor: Colors.light.primaryColor },
           tabBarPressColor: "transparent",
           tabBarPressOpacity: 1,
           tabBarStyle: { elevation: 0, shadowOpacity: 0 },
@@ -209,6 +216,8 @@ const Chats = () => {
           component={OneToOneChats}
           options={{
             lazy: true,
+            animationEnabled: true,
+            tabBarStyle: { backgroundColor: Colors.light.background },
           }}
         />
         <Tab.Screen
@@ -216,6 +225,7 @@ const Chats = () => {
           component={GroupChats}
           options={{
             lazy: true,
+            tabBarStyle: { backgroundColor: Colors.light.background },
           }}
         />
       </Tab.Navigator>

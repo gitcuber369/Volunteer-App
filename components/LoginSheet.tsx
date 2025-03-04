@@ -29,12 +29,11 @@ const LoginSheet = () => {
         <Text style={[styles.btnText]}>Log In</Text>
       </TouchableOpacity>
       <TouchableOpacity
+      className="bg-primary border-primary border-2"
         style={[
           defaultStyles.btn,
           {
-            borderColor: "rgba(87,64,239, 1)",
             borderWidth: 3,
-            backgroundColor: "rgba(87,64,239, 1)",
           },
         ]}
       >
@@ -73,7 +72,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
   },
   btnLight: {
-    backgroundColor: "rgba(87,64,239, 1)",
+    backgroundColor: "#1F4766",
   },
   btnIcon: {
     paddingRight: 6,

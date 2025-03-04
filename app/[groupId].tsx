@@ -40,7 +40,7 @@ const GroupChatScreen = () => {
     // Scroll to bottom after sending message
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    }, 100);  
   };
 
   if (!currentGroup) {

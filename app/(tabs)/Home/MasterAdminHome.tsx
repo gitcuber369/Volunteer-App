@@ -113,7 +113,7 @@ const MasterAdminHome = () => {
                     hideRules
                     hideYAxisText
                     showGradient
-                    frontColor="#2563eb"
+                    frontColor={Colors.light.accent2}
                     barStyle={{ borderRadius: 10 }}
                   />
                 </View>
@@ -136,7 +136,7 @@ const MasterAdminHome = () => {
                     hideRules
                     hideYAxisText
                     showGradient
-                    frontColor="#22c55e"
+                    frontColor={Colors.light.accent1}
                   />
                 </View>
               }

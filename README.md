@@ -48,3 +48,11 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+# Colour Scheme
+
+- #F7F7F7 - backgrounds
+- #1F4766 - main text
+- #E45258 - highlight/call out/special
+- #A1C6AA - accent
+- #FAD02C - accent
