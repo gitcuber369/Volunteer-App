@@ -376,7 +376,7 @@ const Header = () => {
       ]}
     >
       <Animated.Image
-        source={require("@/assets/images/icon/icon.png")}
+        source={require("@/assets/images/icon/i con.png")}
         style={[{ width: 64, height: 64 }, iconAnimatedStyle]}
         resizeMode="cover"
       />
