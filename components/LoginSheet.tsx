@@ -29,6 +29,7 @@ const LoginSheet = () => {
         <Text style={[styles.btnText]}>Log In</Text>
       </TouchableOpacity>
       <TouchableOpacity
+        onPress={() => router.push("/(auth)/sign-up")}
       className="bg-primary border-primary border-2"
         style={[
           defaultStyles.btn,
