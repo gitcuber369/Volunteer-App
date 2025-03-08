@@ -23,7 +23,7 @@ const LoginSheet = () => {
   return (
     <View style={[styles.container, { paddingBottom: bottom }]}>
       <TouchableOpacity
-        onPress={() => bottomSheetRef.current?.expand()}
+        onPress={() => router.push("/(auth)/sign-in")}
         style={[styles.btnLight, defaultStyles.btn]}
       >
         <Text style={[styles.btnText]}>Log In</Text>

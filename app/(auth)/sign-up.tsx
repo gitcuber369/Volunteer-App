@@ -1,34 +1,268 @@
-import { View, Text, TextInput, Pressable, StyleSheet, ImageBackground } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  ImageBackground,
+  ScrollView,
+  Alert,
+} from "react-native";
 import React, { useState } from "react";
 import { Colors } from "@/constants/Colors";
 import { MaterialIcons } from "@expo/vector-icons";
 import { TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
+import { supabase } from "@/service/supabaseClient";
+import { Image } from "react-native";
+import { router } from "expo-router";
+import { ActivityIndicator } from "react-native";
 
 const Signup = () => {
+  const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isChurch, setIsChurch] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [churchName, setChurchName] = useState("");
+  const [churchAddress, setChurchAddress] = useState("");
+  const [churchLogo, setChurchLogo] = useState<string | null>(null);
+
+  const pickImage = async (setImageFunction: (uri: string) => void) => {
+    let permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      alert("Permission to access media library is required.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setImageFunction(result.assets[0].uri);
+    }
+  };
+
+  // Function to upload an image to Supabase Storage
+  const uploadImage = async (fileUri: string, path: string) => {
+    try {
+      const fileExt = fileUri.split(".").pop();
+      const fileName = `${path}/${Date.now()}.${fileExt}`;
+
+      // Convert the image to base64
+      const base64 = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Convert base64 to a Blob
+      const blob = new Blob([base64], { type: `image/${fileExt}` });
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, blob, {
+          contentType: `image/${fileExt}`,
+        });
+
+      if (error) {
+        console.error("Image Upload Error:", error);
+        throw error;
+      }
+
+      // Get public URL of the uploaded image
+      const { data: publicUrlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(fileName);
+      const publicUrl = publicUrlData.publicUrl;
+
+      console.log("Image Uploaded Successfully:", publicUrl);
+      return publicUrl;
+    } catch (error) {
+      console.error("Upload Image Error:", error);
+      return null;
+    }
+  };
+
+  // Handle Signup
+  const handleSignup = async () => {
+    try {
+      console.log("Starting signup process...");
+      let uploadedProfileImage = null;
+      let uploadedChurchLogo = null;
+
+      if (profileImage) {
+        uploadedProfileImage = await uploadImage(profileImage, "profiles");
+        console.log("Profile Image Uploaded:", uploadedProfileImage);
+      }
+
+      if (isChurch && churchLogo) {
+        uploadedChurchLogo = await uploadImage(churchLogo, "churches");
+        console.log("Church Logo Uploaded:", uploadedChurchLogo);
+      }
+
+      // If registering as a church, create the church first
+      let churchId = null;
+      if (isChurch) {
+        console.log("Creating church...");
+        const { data: churchData, error: churchError } = await supabase
+          .from("churches")
+          .insert([
+            {
+              name: churchName,
+              address: churchAddress,
+              logo: uploadedChurchLogo,
+            },
+          ])
+          .select()
+          .single();
+
+        if (churchError) {
+          console.error("Church Creation Error:", churchError);
+          throw churchError;
+        }
+
+        churchId = churchData.id;
+        console.log("Church Created Successfully:", churchId);
+      }
+
+      // Register user in Supabase Auth (No email verification)
+      console.log("Creating user...");
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name, // Store the user's name in authentication metadata
+          },
+        },
+      });
+
+      if (authError) {
+        console.error("User Signup Error:", authError);
+        throw authError;
+      }
+
+      console.log("User Created in Auth Successfully:", authData);
+
+      const userId = authData.user?.id;
+      if (!userId) {
+        throw new Error("User ID not found after signup.");
+      }
+
+      // Insert user data into the `users` table
+      console.log("Inserting user into database...");
+      const role = isChurch ? "MasterAdmin" : "Volunteer";
+      const { error: userInsertError } = await supabase.from("users").insert([
+        {
+          id: userId,
+          email,
+          name, // Store display name in users table
+          role,
+          church_id: churchId,
+          profile_image: uploadedProfileImage,
+        },
+      ]);
+
+      if (userInsertError) {
+        console.error("User Insert Error:", userInsertError);
+        throw userInsertError;
+      }
+
+      console.log("User Inserted Successfully in `users` Table");
+
+      Alert.alert("Signup Successful", "You are now logged in!");
+
+      // **Auto-login user after signup**
+      console.log("Logging in user...");
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (loginError) {
+        console.error("Auto-login Error:", loginError);
+        throw loginError;
+      }
+
+      // **Redirect user based on role**
+      if (role === "MasterAdmin") {
+        router.replace({
+          pathname: "/(tabs)/Home/MasterAdminHome",
+          params: { role: "MasterAdminHome" },
+        });
+      } else {
+        router.replace({
+          pathname: "/(tabs)/Home/VolunteerHome",
+          params: { role: "VolunteerHome" },
+        });
+      }
+    } catch (error) {
+      console.error("Signup Error:", error);
+      Alert.alert("Signup Failed", error.message);
+    }
+  };
 
   return (
     <ImageBackground
-      source={require('@/assets/images/icon/icon.png')} // Add a subtle background image
+      source={require("@/assets/images/icon/icon.png")}
       style={styles.container}
     >
       <LinearGradient
-        colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.95)']}
+        colors={["rgba(255,255,255,0.9)", "rgba(255,255,255,0.95)"]}
         style={styles.overlay}
       >
-        <View style={styles.content}>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join our volunteer community</Text>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <View style={styles.content}>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Join our volunteer community</Text>
 
-          <View style={styles.form}>
+            <View style={styles.form}></View>
+            <View style={styles.profileImageContainer}>
+              <Text style={styles.label}>Profile Image</Text>
+              <TouchableOpacity
+                style={styles.imageSelector}
+                onPress={() => pickImage(setProfileImage)}
+              >
+                {profileImage ? (
+                  <Image
+                    source={{ uri: profileImage }}
+                    style={{ width: 100, height: 100, borderRadius: 50 }}
+                  />
+                ) : (
+                  <View style={styles.imagePlaceholder}>
+                    <MaterialIcons
+                      name="camera-alt"
+                      size={24}
+                      color={Colors.light.primaryColor}
+                    />
+                  </View>
+                )}
+                <Text style={styles.imageText}>
+                  {profileImage
+                    ? "Change profile image"
+                    : "Tap to select a profile image"}
+                </Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Name</Text>
               <View style={styles.inputWrapper}>
-                <MaterialIcons name="person" size={20} color={Colors.light.primaryColor} style={styles.inputIcon} />
+                <MaterialIcons
+                  name="person"
+                  size={20}
+                  color={Colors.light.primaryColor}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   value={name}
                   onChangeText={setName}
@@ -42,7 +276,12 @@ const Signup = () => {
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Email</Text>
               <View style={styles.inputWrapper}>
-                <MaterialIcons name="email" size={20} color={Colors.light.primaryColor} style={styles.inputIcon} />
+                <MaterialIcons
+                  name="email"
+                  size={20}
+                  color={Colors.light.primaryColor}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   value={email}
                   onChangeText={setEmail}
@@ -57,7 +296,12 @@ const Signup = () => {
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Password</Text>
               <View style={styles.inputWrapper}>
-                <MaterialIcons name="lock" size={20} color={Colors.light.primaryColor} style={styles.inputIcon} />
+                <MaterialIcons
+                  name="lock"
+                  size={20}
+                  color={Colors.light.primaryColor}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   value={password}
                   onChangeText={setPassword}
@@ -76,7 +320,10 @@ const Signup = () => {
               <View
                 style={[
                   styles.checkbox,
-                  isChurch && { backgroundColor: Colors.light.primaryColor, borderColor: Colors.light.primaryColor },
+                  isChurch && {
+                    backgroundColor: Colors.light.primaryColor,
+                    borderColor: Colors.light.primaryColor,
+                  },
                 ]}
               >
                 {isChurch && (
@@ -85,25 +332,109 @@ const Signup = () => {
               </View>
               <Text style={styles.checkboxLabel}>Register as Church</Text>
             </TouchableOpacity>
-            
+
+            {isChurch && (
+              <>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Church Name</Text>
+                  <View style={styles.inputWrapper}>
+                    <MaterialIcons
+                      name="church"
+                      size={20}
+                      color={Colors.light.primaryColor}
+                      style={styles.inputIcon}
+                    />
+                    <TextInput
+                      value={churchName}
+                      onChangeText={setChurchName}
+                      style={styles.input}
+                      placeholder="Enter church name"
+                      placeholderTextColor="#999"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Church Address</Text>
+                  <View style={styles.inputWrapper}>
+                    <MaterialIcons
+                      name="location-on"
+                      size={20}
+                      color={Colors.light.primaryColor}
+                      style={styles.inputIcon}
+                    />
+                    <TextInput
+                      value={churchAddress}
+                      onChangeText={setChurchAddress}
+                      style={styles.input}
+                      placeholder="Enter church address"
+                      placeholderTextColor="#999"
+                      multiline
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.profileImageContainer}>
+                  <Text style={styles.label}>Church Logo</Text>
+                  <TouchableOpacity
+                    style={styles.imageSelector}
+                    onPress={() => pickImage(setChurchLogo)}
+                  >
+                    {churchLogo ? (
+                      <Image
+                        source={{ uri: churchLogo }}
+                        style={{ width: 100, height: 100, borderRadius: 50 }}
+                      />
+                    ) : (
+                      <View style={styles.imagePlaceholder}>
+                        <MaterialIcons
+                          name="image"
+                          size={24}
+                          color={Colors.light.primaryColor}
+                        />
+                      </View>
+                    )}
+                    <Text style={styles.imageText}>
+                      {churchLogo
+                        ? "Change church logo"
+                        : "Tap to select a church logo"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
             <TouchableOpacity
               style={styles.button}
               onPress={() => {
-                // Add your signup logic here
-                console.log({ name, email, password, isChurch });
+                setIsLoading(true);
+                handleSignup().finally(() => {
+                  setIsLoading(false);
+                });
               }}
+              disabled={isLoading}
             >
               <LinearGradient
-                colors={[Colors.light.primaryColor, '#5D3FD3']}
+                colors={[Colors.light.primaryColor, "#5D3FD3"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.gradient}
               >
-                <Text style={styles.buttonText}>Sign Up</Text>
-                <MaterialIcons name="arrow-forward" size={20} color="white" />
+                {isLoading ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <>
+                    <Text style={styles.buttonText}>Sign Up</Text>
+                    <MaterialIcons
+                      name="arrow-forward"
+                      size={20}
+                      color="white"
+                    />
+                  </>
+                )}
               </LinearGradient>
             </TouchableOpacity>
-            
+
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account?</Text>
               <TouchableOpacity>
@@ -111,7 +442,7 @@ const Signup = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </ScrollView>
       </LinearGradient>
     </ImageBackground>
   );
@@ -124,7 +455,11 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     padding: 20,
+    paddingBottom: 40,
   },
   content: {
     flex: 1,
@@ -229,6 +564,32 @@ const styles = StyleSheet.create({
     color: Colors.light.primaryColor,
     fontWeight: "600",
     fontSize: 14,
+  },
+  profileImageContainer: {
+    marginBottom: 16,
+  },
+  imageSelector: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+  },
+  imagePlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "rgba(230, 230, 250, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: Colors.light.primaryColor,
+    borderStyle: "dashed",
+    marginBottom: 8,
+  },
+  imageText: {
+    color: Colors.light.primaryColor,
+    fontSize: 14,
+    textAlign: "center",
+    fontWeight: "500",
   },
 });
 
