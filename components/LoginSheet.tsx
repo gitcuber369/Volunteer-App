@@ -12,7 +12,11 @@ const LoginSheet = () => {
 
   const navigation = useNavigation();
 
-  const handleRoleSelect = (role) => {
+  interface RoleType {
+    role: string;
+  }
+
+  const handleRoleSelect = (role: string): void => {
     bottomSheetRef.current?.close();
     router.replace({
       pathname: "/(tabs)/Home/HomeScreen",
