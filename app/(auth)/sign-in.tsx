@@ -16,6 +16,7 @@ import { useState } from "react";
 import { router } from "expo-router";
 import { supabase } from "@/service/supabaseClient";
 import { Colors } from "@/constants/Colors";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SignIn = () => {
   const [email, setEmail] = useState("");
@@ -62,7 +63,11 @@ const SignIn = () => {
 
       const role = userData?.role;
       console.log("User role fetched:", role);
-
+      const session_token = authData.session?.access_token;
+      if (session_token) {
+        await AsyncStorage.setItem("session_token", session_token);
+        console.log("Session token saved to AsyncStorage while login in.", session_token);
+      }
       // Redirect based on role
       if (role === "MasterAdmin") {
         router.push({

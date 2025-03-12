@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -19,12 +19,13 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/service/supabaseClient";
 import { router } from "expo-router";
+import { useUserData } from "@/hooks/useAuth";
 
 async function handleLogout() {
   try {
     await AsyncStorage.removeItem("session_token");
     await supabase.auth.signOut();
-    Alert.alert("Logged out successfully.");  
+    Alert.alert("Logged out successfully.");
     router.replace({
       pathname: "/",
     });
@@ -33,11 +34,15 @@ async function handleLogout() {
   }
 }
 
+// Call fetchUserData when the component mounts
+
 const Profile = () => {
   const navigation = useNavigation();
   const { top } = useSafeAreaInsets();
-  // Dummy data (Replace with actual data)
-  const [loading , setLoading] = useState(false);
+  const { userData, loading } = useUserData();
+
+  // Call fetchUserData when the component mounts
+
   const admin = {
     name: "John Doe",
     email: "admin@church.org",
@@ -59,92 +64,90 @@ const Profile = () => {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        {/* Church Logo */}
-        <View style={styles.header}>
-          <Image
-            source={require("@/assets/images/icon/icon.png")}
-            style={styles.churchLogo}
-          />
-          <Text style={styles.churchName}>{admin.church.name}</Text>
-        </View>
-
-        {/* Admin Details */}
-        <View style={styles.profileCard}>
-          <View style={styles.profileImageContainer}>
+        <View>
+          <View style={styles.header}>
             <Image
-              source={{ uri: "https://i.pravatar.cc/300?img=8" }}
-              style={styles.profileImage}
+              source={require("@/assets/images/icon/icon.png")}
+              style={styles.churchLogo}
             />
-            <View style={styles.editIconContainer}>
-              <Ionicons name="pencil" size={14} color="white" />
+            <Text style={styles.churchName}>{admin.church.name}</Text>
+          </View>
+          {/* Admin Details */}
+          <View style={styles.profileCard}>
+            <View style={styles.profileImageContainer}>
+              <Image
+                source={{ uri: "https://i.pravatar.cc/300?img=8" }}
+                style={styles.profileImage}
+              />
+              <Text style={styles.adminName}>
+                {userData?.name || admin.name}
+              </Text>
+              <View style={styles.editIconContainer}>
+                <Ionicons name="pencil" size={14} color="white" />
+              </View>
+            </View>
+            <Text style={styles.adminName}>{userData?.name}</Text>
+            <Text style={styles.adminEmail}>{userData?.email}</Text>
+            <Text style={styles.adminRole}>{userData?.role}</Text>
+          </View>
+          {/* Volunteer Engagement Stats */}
+          <View style={styles.statsCard}>
+            <Text style={styles.sectionTitle}>Volunteer Engagement</Text>
+            <View style={styles.statsContainer}>
+              <View style={[styles.statBox, { backgroundColor: "#10B981" }]}>
+                <Text style={styles.statNumber}>
+                  {admin.engagementStats.green}
+                </Text>
+                <Text style={styles.statLabel}>Green</Text>
+              </View>
+              <View style={[styles.statBox, { backgroundColor: "#F59E0B" }]}>
+                <Text style={styles.statNumber}>
+                  {admin.engagementStats.yellow}
+                </Text>
+                <Text style={styles.statLabel}>Yellow</Text>
+              </View>
+              <View style={[styles.statBox, { backgroundColor: "#EF4444" }]}>
+                <Text style={styles.statNumber}>
+                  {admin.engagementStats.red}
+                </Text>
+                <Text style={styles.statLabel}>Red</Text>
+              </View>
             </View>
           </View>
-          <Text style={styles.adminName}>{admin.name}</Text>
-          <Text style={styles.adminEmail}>{admin.email}</Text>
-          <Text style={styles.adminRole}>{admin.role}</Text>
-        </View>
-
-        {/* Volunteer Engagement Stats */}
-        <View style={styles.statsCard}>
-          <Text style={styles.sectionTitle}>Volunteer Engagement</Text>
-          <View style={styles.statsContainer}>
-            <View style={[styles.statBox, { backgroundColor: "#10B981" }]}>
-              <Text style={styles.statNumber}>
-                {admin.engagementStats.green}
-              </Text>
-              <Text style={styles.statLabel}>Green</Text>
-            </View>
-            <View style={[styles.statBox, { backgroundColor: "#F59E0B" }]}>
-              <Text style={styles.statNumber}>
-                {admin.engagementStats.yellow}
-              </Text>
-              <Text style={styles.statLabel}>Yellow</Text>
-            </View>
-            <View style={[styles.statBox, { backgroundColor: "#EF4444" }]}>
-              <Text style={styles.statNumber}>{admin.engagementStats.red}</Text>
-              <Text style={styles.statLabel}>Red</Text>
-            </View>
+          {/* Actions */}
+          <View style={styles.actionCard}>
+            <TouchableOpacity style={styles.actionButton}>
+              <Ionicons name="people-outline" size={24} color="#2563eb" />
+              <Text style={styles.actionText}>Manage Users</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton}>
+              <Ionicons name="layers-outline" size={24} color="#2563eb" />
+              <Text style={styles.actionText}>Manage Teams</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton}>
+              <Ionicons name="chatbubble-outline" size={24} color="#2563eb" />
+              <Text style={styles.actionText}>Messaging</Text>
+            </TouchableOpacity>
           </View>
+          {/* Logout Button */}
+          const [loggingOut, setLoggingOut] = useState(false);
+          <TouchableOpacity
+            style={[styles.logoutButton, { opacity: loading ? 0.5 : 0.7 }]}
+            onPress={async () => {
+              handleLogout();
+            }}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <>
+                <Ionicons name="log-out-outline" size={24} color="white" />
+                <Text style={styles.logoutText}>Logout</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
-
-        {/* Actions */}
-        <View style={styles.actionCard}>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="people-outline" size={24} color="#2563eb" />
-            <Text style={styles.actionText}>Manage Users</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="layers-outline" size={24} color="#2563eb" />
-            <Text style={styles.actionText}>Manage Teams</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="chatbubble-outline" size={24} color="#2563eb" />
-            <Text style={styles.actionText}>Messaging</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Logout */}
-        <TouchableOpacity
-          style={[
-            styles.logoutButton,
-            loading && { opacity: 0.7 }
-          ]}
-          onPress={async () => {
-            setLoading(true);
-            await handleLogout();
-            setLoading(false);
-          }}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : (
-            <>
-              <Ionicons name="log-out-outline" size={24} color="white" />
-              <Text style={styles.logoutText}>Logout</Text>
-            </>
-          )}
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -180,6 +183,16 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     marginBottom: 20,
   },
+  profileImageContainer: {
+    position: "relative",
+    marginBottom: 10,
+    alignItems: "center",
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
   adminName: {
     fontSize: 20,
     fontWeight: "bold",
@@ -188,12 +201,26 @@ const styles = StyleSheet.create({
   adminEmail: {
     fontSize: 16,
     color: "gray",
+    marginTop: 4,
   },
   adminRole: {
     fontSize: 14,
     color: "#2563eb",
     fontWeight: "bold",
     marginTop: 4,
+  },
+  editIconContainer: {
+    position: "absolute",
+    right: 0,
+    bottom: 0,
+    backgroundColor: Colors.light.primaryColor,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "white",
   },
   statsCard: {
     backgroundColor: "white",
@@ -239,28 +266,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
   },
-  profileImageContainer: {
-    position: "relative",
-    marginBottom: 10,
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  editIconContainer: {
-    position: "absolute",
-    right: 0,
-    bottom: 0,
-    backgroundColor: Colors.light.primaryColor,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "white",
-  },
   actionText: {
     fontSize: 16,
     fontWeight: "bold",
@@ -273,6 +278,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     flexDirection: "row",
     justifyContent: "center",
+    marginBottom: 60,
     alignItems: "center",
   },
   logoutText: {
