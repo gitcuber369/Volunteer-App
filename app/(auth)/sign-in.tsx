@@ -10,6 +10,7 @@ import {
   Platform,
   Image,
   ImageBackground,
+  ActivityIndicator,
 } from "react-native";
 import { useState } from "react";
 import { router } from "expo-router";
@@ -147,7 +148,7 @@ const SignIn = () => {
                 disabled={loading}
               >
                 <Text style={styles.buttonText}>
-                  {loading ? "Signing In..." : "Sign In"}
+                  {loading ? <ActivityIndicator /> : "Sign In"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -176,7 +177,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   backgroundImageStyle: {
-    opacity: 0.1, 
+    opacity: 0.1,
     resizeMode: "contain",
   },
   keyboardAvoid: {

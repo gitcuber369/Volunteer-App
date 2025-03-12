@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,10 +16,28 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { supabase } from "@/service/supabaseClient";
+import { router } from "expo-router";
+
+async function handleLogout() {
+  try {
+    await AsyncStorage.removeItem("session_token");
+    await supabase.auth.signOut();
+    Alert.alert("Logged out successfully.");  
+    router.replace({
+      pathname: "/",
+    });
+  } catch (error) {
+    console.error("Sign-Out Error:", error);
+  }
+}
+
 const Profile = () => {
   const navigation = useNavigation();
   const { top } = useSafeAreaInsets();
   // Dummy data (Replace with actual data)
+  const [loading , setLoading] = useState(false);
   const admin = {
     name: "John Doe",
     email: "admin@church.org",
@@ -105,11 +125,25 @@ const Profile = () => {
 
         {/* Logout */}
         <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={() => alert("Logged out!")}
+          style={[
+            styles.logoutButton,
+            loading && { opacity: 0.7 }
+          ]}
+          onPress={async () => {
+            setLoading(true);
+            await handleLogout();
+            setLoading(false);
+          }}
+          disabled={loading}
         >
-          <Ionicons name="log-out-outline" size={24} color="white" />
-          <Text style={styles.logoutText}>Logout</Text>
+          {loading ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <>
+              <Ionicons name="log-out-outline" size={24} color="white" />
+              <Text style={styles.logoutText}>Logout</Text>
+            </>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

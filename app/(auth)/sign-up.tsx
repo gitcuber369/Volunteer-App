@@ -16,6 +16,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import { supabase } from "@/service/supabaseClient";
 import { Image } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { ActivityIndicator } from "react-native";
 
@@ -181,6 +182,8 @@ const Signup = () => {
 
       // **Auto-login user after signup**
       console.log("Logging in user...");
+
+   
       const { error: loginError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -189,6 +192,12 @@ const Signup = () => {
       if (loginError) {
         console.error("Auto-login Error:", loginError);
         throw loginError;
+      }
+
+      const session = authData.session;
+      if (session) {
+        await AsyncStorage.setItem("user session token", session.access_token);
+        console.log("session token stored in AsyncStorage", session.access_token);
       }
 
       // **Redirect user based on role**
