@@ -39,7 +39,8 @@ async function handleLogout() {
 const Profile = () => {
   const navigation = useNavigation();
   const { top } = useSafeAreaInsets();
-  const { userData, loading } = useUserData();
+  const { userData } = useUserData();
+  const [loading, setLoading] = useState(false);
 
   // Call fetchUserData when the component mounts
 
@@ -65,18 +66,18 @@ const Profile = () => {
         showsVerticalScrollIndicator={false}
       >
         <View>
-          <View style={styles.header}>
-            <Image
-              source={require("@/assets/images/icon/icon.png")}
-              style={styles.churchLogo}
-            />
-            <Text style={styles.churchName}>{admin.church.name}</Text>
-          </View>
+              <View style={styles.header}>
+              <Image
+                source={userData?.church?.logo ? { uri: userData?.church?.logo } : { uri: "https://via.placeholder.com/100" }}
+                style={styles.churchLogo}
+              />
+              <Text style={styles.churchName}>{userData?.church?.name || 'Your Church'}</Text>
+              </View>
           {/* Admin Details */}
           <View style={styles.profileCard}>
             <View style={styles.profileImageContainer}>
               <Image
-                source={{ uri: "https://i.pravatar.cc/300?img=8" }}
+                source={{ uri: userData?.profile_image }}
                 style={styles.profileImage}
               />
               <Text style={styles.adminName}>
@@ -130,23 +131,23 @@ const Profile = () => {
             </TouchableOpacity>
           </View>
           {/* Logout Button */}
-          const [loggingOut, setLoggingOut] = useState(false);
-          <TouchableOpacity
-            style={[styles.logoutButton, { opacity: loading ? 0.5 : 0.7 }]}
+   
+            <TouchableOpacity
+            style={[styles.logoutButton, { opacity: loading ? 0.5 : 1 }]}
             onPress={async () => {
               handleLogout();
             }}
             disabled={loading}
-          >
+            >
             {loading ? (
               <ActivityIndicator size="small" color="white" />
             ) : (
               <>
-                <Ionicons name="log-out-outline" size={24} color="white" />
-                <Text style={styles.logoutText}>Logout</Text>
+              <Ionicons name="log-out-outline" size={24} color="white" />
+              <Text style={styles.logoutText}>Logout</Text>
               </>
             )}
-          </TouchableOpacity>
+            </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>

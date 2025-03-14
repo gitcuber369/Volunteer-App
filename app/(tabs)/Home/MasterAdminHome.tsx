@@ -16,6 +16,7 @@ import Badge from "@/components/ui/badge";
 import { Colors } from "@/constants/Colors";
 import { users } from "@/constants/data";
 import GroupsList from "@/components/OnlineComponent";
+import { useUserData } from "@/hooks/useAuth";
 import Animated, {
   Extrapolate,
   interpolate,
@@ -286,87 +287,90 @@ const Header = () => {
   );
 };
 
-const UserGreeting = () => (
-  <View
-    style={{
-      flexDirection: "row",
-      alignItems: "center",
-      paddingVertical: 16,
-      paddingHorizontal: 4,
-      marginBottom: 12,
-    }}
-  >
-    <Image
-      source={{
-        uri: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=687&q=80",
-      }}
+const UserGreeting = () => {
+  const { userData } = useUserData();
+  return (
+    <View
       style={{
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        marginRight: 16,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 16,
+        paddingHorizontal: 4,
+        marginBottom: 12,
       }}
-      resizeMode="cover"
-    />
-    <View style={{ flex: 1 }}>
-      <Text
-        style={{
-          color: Colors.light.text,
-          fontSize: 22,
-          fontWeight: "700",
-          marginBottom: 4,
+    >
+      <Image
+        source={{
+          uri: userData?.profile_image,
         }}
-      >
-        {getGreeting()}
-      </Text>
-      <View
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          marginBottom: 8,
+          width: 72,
+          height: 72,
+          borderRadius: 36,
+          marginRight: 16,
         }}
-      >
+        resizeMode="cover"
+      />
+      <View style={{ flex: 1 }}>
         <Text
           style={{
-            color: "#9ca3af",
-            fontSize: 16,
-            fontWeight: "600",
-            marginRight: 8,
+            color: Colors.light.text,
+            fontSize: 22,
+            fontWeight: "700",
+            marginBottom: 4,
           }}
         >
-          {users[1].name}
+          {getGreeting()}
         </Text>
-        <Badge
-          text="Master Admin"
-          color="white"
-          size="small"
-          backgroundColor="#333"
-          borderColor="transparent"
-        />
-      </View>
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            marginRight: 16,
+            marginBottom: 8,
           }}
         >
-          <Ionicons name="business-outline" size={16} color="#9ca3af" />
-          <Text style={{ marginLeft: 4, color: "#9ca3af", fontSize: 14 }}>
-            St. Mary's Church
+          <Text
+            style={{
+              color: "#9ca3af",
+              fontSize: 16,
+              fontWeight: "600",
+              marginRight: 8,
+            }}
+          >
+            {userData?.name}
           </Text>
+          <Badge
+            text="Master Admin"
+            color="white"
+            size="small"
+            backgroundColor="#333"
+            borderColor="transparent"
+          />
         </View>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Ionicons name="location-outline" size={16} color="#9ca3af" />
-          <Text style={{ marginLeft: 4, color: "#9ca3af", fontSize: 14 }}>
-            Los Angeles, CA
-          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginRight: 16,
+            }}
+          >
+            <Ionicons name="business-outline" size={16} color="#9ca3af" />
+            <Text style={{ marginLeft: 4, color: "#9ca3af", fontSize: 14 }}>
+             {userData?.church?.name}
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Ionicons name="location-outline" size={16} color="#9ca3af" />
+            <Text style={{ marginLeft: 4, color: "#9ca3af", fontSize: 14 }}>
+              {userData?.church?.address}
+            </Text>
+          </View>
         </View>
       </View>
     </View>
-  </View>
-);
+  );
+};
 
 const ChartCard = ({
   title,

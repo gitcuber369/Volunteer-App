@@ -19,6 +19,7 @@ import { Image } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { ActivityIndicator } from "react-native";
+import { decode } from "base64-arraybuffer";
 
 const Signup = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -51,24 +52,24 @@ const Signup = () => {
     }
   };
 
-  // Function to upload an image to Supabase Storage
+  // Function to upload an image to Supabase Storage - Fixed version
   const uploadImage = async (fileUri: string, path: string) => {
     try {
       const fileExt = fileUri.split(".").pop();
       const fileName = `${path}/${Date.now()}.${fileExt}`;
 
-      // Convert the image to base64
+      // Read file as base64
       const base64 = await FileSystem.readAsStringAsync(fileUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
+      
+      // Convert base64 to ArrayBuffer using base64-arraybuffer decoder
+      const arrayBuffer = decode(base64);
 
-      // Convert base64 to a Blob
-      const blob = new Blob([base64], { type: `image/${fileExt}` });
-
-      // Upload to Supabase Storage
+      // Upload to Supabase Storage using ArrayBuffer
       const { data, error } = await supabase.storage
         .from("avatars")
-        .upload(fileName, blob, {
+        .upload(fileName, arrayBuffer, {
           contentType: `image/${fileExt}`,
         });
 
@@ -94,6 +95,7 @@ const Signup = () => {
   // Handle Signup
   const handleSignup = async () => {
     try {
+      setIsLoading(true);
       console.log("Starting signup process...");
       let uploadedProfileImage = null;
       let uploadedChurchLogo = null;
@@ -183,7 +185,6 @@ const Signup = () => {
       // **Auto-login user after signup**
       console.log("Logging in user...");
 
-   
       const { error: loginError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -196,7 +197,7 @@ const Signup = () => {
 
       const session = authData.session;
       if (session) {
-        await AsyncStorage.setItem("user session token", session.access_token);
+        await AsyncStorage.setItem("session_token", session.access_token);
         console.log("session token stored in AsyncStorage", session.access_token);
       }
 
@@ -215,6 +216,8 @@ const Signup = () => {
     } catch (error) {
       console.error("Signup Error:", error);
       Alert.alert("Signup Failed", error.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -375,7 +378,7 @@ const Signup = () => {
                     <TextInput
                       value={churchAddress}
                       onChangeText={setChurchAddress}
-                      style={styles.input}
+                      style={styles.input}  
                       placeholder="Enter church address"
                       placeholderTextColor="#999"
                       multiline
@@ -415,12 +418,7 @@ const Signup = () => {
 
             <TouchableOpacity
               style={styles.button}
-              onPress={() => {
-                setIsLoading(true);
-                handleSignup().finally(() => {
-                  setIsLoading(false);
-                });
-              }}
+              onPress={handleSignup}
               disabled={isLoading}
             >
               <LinearGradient

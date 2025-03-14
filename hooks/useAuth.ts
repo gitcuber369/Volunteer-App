@@ -2,11 +2,20 @@ import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/service/supabaseClient";
 
+interface ChurchData {
+  id: string;
+  name: string;
+  address: string;
+  logo: string;
+}
+
 interface UserData {
   id: string;
   role: string;
+  profile_image: string;
   name: string;
   email: string;
+  church?: ChurchData | null;
 }
 
 export const useUserData = () => {
@@ -45,7 +54,7 @@ export const useUserData = () => {
 
         const { data: userData, error: userDataError } = await supabase
           .from("users")
-          .select("id, role, name, email")
+          .select("id, role, name, email, profile_image, church:churches(id, name, address, logo)")
           .eq("id", userId)
           .single();
 

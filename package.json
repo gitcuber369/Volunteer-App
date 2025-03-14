@@ -31,6 +31,7 @@
     "avatar": "^0.1.0",
     "babel-plugin-module-resolver": "^5.0.2",
     "badge": "^1.0.3",
+    "base64-arraybuffer": "^1.0.2",
     "box": "^0.0.4",
     "card": "^2.5.4",
     "expo": "~52.0.35",

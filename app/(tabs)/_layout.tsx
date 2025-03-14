@@ -14,7 +14,7 @@ import { useState, useRef, useCallback } from "react";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import * as ImagePicker from "expo-image-picker";
 import HomeScreen from "@/app/(tabs)/Home/HomeScreen";
-import TasksScreen from "@/app/(tabs)/TaskScreen";
+import TasksScreen from "@/app/(tabs)/Search";
 import ChatsScreen from "@/app/(tabs)/Chats";
 import ProfileScreen from "@/app/(tabs)/Profile";
 import ActionScreen from "@/app/(tabs)/Action";
@@ -122,11 +122,11 @@ export default function BottomTabNavigator() {
           }}
         />
         <Tab.Screen
-          name="Tasks"
+          name="Search"
           component={TasksScreen}
           options={{
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="list" size={size} color={color} />
+              <Ionicons name="search" size={size} color={color} />
             ),
           }}
         />
@@ -384,6 +384,7 @@ export default function BottomTabNavigator() {
               backgroundColor: Colors.light.primaryColor,
               padding: 16,
               borderRadius: 14,
+              marginBottom: 80,
               alignItems: "center",
               shadowColor: Colors.light.primaryColor,
               shadowOffset: { width: 0, height: 4 },
