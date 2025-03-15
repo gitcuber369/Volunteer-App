@@ -66,13 +66,22 @@ const OneToOneChats = () => {
             return {
               ...chat,
               lastMessage: lastMessage?.message || "No messages yet",
+              timestamp: lastMessage?.created_at
+                ? new Date(lastMessage.created_at)
+                : new Date(0),
               lastMessageTime: lastMessage?.created_at
                 ? moment(lastMessage.created_at).fromNow()
                 : undefined,
             };
           })
         );
-        setUsers(usersWithLastMessage);
+
+        // Sort by most recent message timestamp
+        const sortedUsers = usersWithLastMessage.sort(
+          (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
+        );
+
+        setUsers(sortedUsers);
       }
     } catch (error) {
       console.error("Error refreshing chats:", error);
@@ -87,6 +96,7 @@ const OneToOneChats = () => {
       profile_image: string;
       lastMessage?: string;
       lastMessageTime?: string;
+      timestamp?: Date;
       time?: string;
       unreadCount?: number;
     }[]
@@ -126,32 +136,54 @@ const OneToOneChats = () => {
       // Fetch last messages for each user
       const usersWithLastMessage = await Promise.all(
         churchUsers.map(async (chat) => {
-          const { data: lastMessage, error: lastMessageError } = await supabase
+          const { data: lastMessage } = await supabase
             .from("messages")
-            .select("message, created_at")
+            .select("message, created_at, is_read, receiver_id")
             .or(`sender_id.eq.${chat.id},receiver_id.eq.${chat.id}`)
             .order("created_at", { ascending: false })
             .limit(1)
             .single();
 
-          if (lastMessageError && lastMessageError.code !== "PGRST116") {
-            console.error("Error fetching last message:", lastMessageError);
-          }
+          // Fetch unread messages count
+          const { count: unreadCount } = await supabase
+            .from("messages")
+            .select("*", { count: "exact" })
+            .eq("receiver_id", user?.user?.id)
+            .eq("sender_id", chat.id)
+            .eq("is_read", false);
 
           return {
             ...chat,
             lastMessage: lastMessage?.message || "No messages yet",
+            timestamp: lastMessage?.created_at
+              ? new Date(lastMessage.created_at)
+              : new Date(0),
             lastMessageTime: lastMessage?.created_at
               ? moment(lastMessage.created_at).fromNow()
               : undefined,
+            unreadCount: unreadCount || 0,
           };
         })
       );
 
-      setUsers(usersWithLastMessage);
+      // Sort by most recent message timestamp
+      const sortedUsers = usersWithLastMessage.sort(
+        (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
+      );
+
+      setUsers(sortedUsers);
     };
 
     fetchUsersWithLastMessage();
+  }, []);
+
+  // Auto-refresh every 1 second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      onRefresh();
+    }, 1000); // Refresh every 1 second
+
+    return () => clearInterval(interval); // Cleanup interval on unmount
   }, []);
 
   return (
@@ -188,46 +220,81 @@ const OneToOneChats = () => {
               },
             ]}
           >
+            {/* Unread Messages Badge */}
+            {(item.unreadCount ?? 0) > 0 && (
+              <View 
+                style={{
+                  position: 'absolute',
+                  left: 8,
+                  top: '50%',
+                  backgroundColor: Colors.light.primaryColor,
+                  borderRadius: 12,
+                  paddingHorizontal: 8,
+                  paddingVertical: 2,
+                  zIndex: 10,
+                  transform: [{ translateY: -12 }]
+                }}
+              >
+                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>
+                  {item.unreadCount}
+                </Text>
+              </View>
+            )}
+            
             {/* User Profile Image */}
             <View
               style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              overflow: "hidden",
-              borderWidth: 2,
-              borderColor: "rgba(37, 99, 235, 0.1)",
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                overflow: "hidden",
+                borderWidth: 2,
+                borderColor: "rgba(37, 99, 235, 0.1)",
               }}
             >
               <Image
-              source={{ 
-                uri: item.profile_image || "https://images.unsplash.com/photo-1511367461989-f85a21fda167?q=80&w=3131&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
-              }}
-              style={{ width: "100%", height: "100%" }}
+                source={{
+                  uri:
+                    item.profile_image ||
+                    "https://images.unsplash.com/photo-1511367461989-f85a21fda167?q=80&w=3131&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                }}
+                style={{ width: "100%", height: "100%" }}
               />
             </View>
 
             {/* Chat Info */}
             <View style={{ flex: 1, marginLeft: 14 }}>
               <View className="flex-row justify-between items-center">
-                <Text className="text-base font-semibold text-gray-900">
+                <Text 
+                  className={`text-base font-semibold ${(item.unreadCount ?? 0) > 0 ? 'text-black' : 'text-gray-900'}`}
+                  style={(item.unreadCount ?? 0) > 0 ? { fontWeight: '700' } : {}}
+                >
                   {item.name}
                 </Text>
                 <Text className="text-xs text-gray-500">
                   {item.lastMessageTime || ""}
                 </Text>
               </View>
-              
+
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                className="text-sm text-gray-600 mt-1"
+                className={`text-sm ${(item.unreadCount ?? 0) > 0 ? 'text-gray-800 font-medium' : 'text-gray-600'} mt-1`}
               >
                 {item.lastMessage}
               </Text>
             </View>
 
             {/* Arrow Icon */}
+            <View className="relative">
+              {(item.unreadCount ?? 0) > 0 && (
+                <View className="absolute -top-2 -right-2 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center">
+                  <Text className="text-xs text-white font-bold">
+                    {item.unreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
             <Text className="text-2xl text-gray-500 opacity-50 ml-2">›</Text>
           </Pressable>
         )}
@@ -323,7 +390,7 @@ const GroupChats = () => {
                       ))}
                 </View>
 
-                {item.unreadCount > 0 && (
+                {(item.unreadCount ?? 0) > 0 && (
                   <View
                     className="rounded-full px-2 py-0.5 items-center justify-center ml-3"
                     style={{ backgroundColor: Colors.light.primaryColor }}
