@@ -198,8 +198,10 @@ const Signup = () => {
       const session = authData.session;
       if (session) {
         await AsyncStorage.setItem("session_token", session.access_token);
-        console.log("session token stored in AsyncStorage", session.access_token);
+        await AsyncStorage.setItem("user_role", role);
+        console.log("Session token and role stored:", session.access_token, role);
       }
+      
 
       // **Redirect user based on role**
       if (role === "MasterAdmin") {

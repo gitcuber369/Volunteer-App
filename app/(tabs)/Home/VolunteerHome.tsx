@@ -21,6 +21,8 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 import Badge from "@/components/ui/badge";
+import { useUserData} from "@/hooks/useAuth"
+
 
 const getGreeting = () => {
   const currentHour = new Date().getHours();
@@ -35,7 +37,7 @@ const getGreeting = () => {
 
 const VolunteerHome = () => {
   const { top } = useSafeAreaInsets();
-
+  const { userData } = useUserData()
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: Colors.light.background }}

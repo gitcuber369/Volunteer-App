@@ -310,8 +310,107 @@ const OneToOneChats = () => {
     </View>
   );
 };
-
 const GroupChats = () => {
+  const [groups, setGroups] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchUserGroups = async () => {
+    try {
+      setRefreshing(true);
+      
+      // Get current authenticated user
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        console.error("No authenticated user found");
+        return;
+      }
+
+      const userId = userData.user.id;
+
+      // Get all groups the user is a member of
+      const { data: userGroups, error: userGroupsError } = await supabase
+        .from('group_members')
+        .select("group_id, groups(id, name, created_at)")
+        .eq('user_id', userId)
+        .limit(1000);
+
+      if (userGroupsError) {
+        console.error("Error fetching user groups:", userGroupsError);
+        return;
+      }
+      // Extract unique groups - ensure each item is a single object not an array
+   
+      const uniqueGroups = userGroups.map(item => item.groups);
+
+      // For each group, get member count and last message
+      const groupsWithDetails = await Promise.all(
+        uniqueGroups.map(async (group) => {
+          // Get member count
+          const { count: memberCount } = await supabase
+            .from('group_members')
+            .select('*', { count: 'exact' })
+            .eq('group_id', group.id);
+
+          // Get group members with profiles for avatars
+          const { data: members } = await supabase
+            .from('group_members')
+            .select('users:user_id(id, name, profile_image)')
+            .eq('group_id', group.id)
+            .limit(3);
+
+          const memberImages = members?.map(m => m.users?.profile_image) || [];
+
+          // Get last message and unread count
+          const { data: lastMessage } = await supabase
+            .from('group_messages')
+            .select('message, created_at')
+            .eq('group_id', group.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          // Get unread message count for current user
+          const { count: unreadCount } = await supabase
+            .from('group_messages')
+            .select('*', { count: 'exact' })
+            .eq('group_id', group.id)
+            .eq('is_read', false)
+            .neq('sender_id', userId);
+
+          return {
+            id: group.id,
+            name: group.name,
+            members: memberCount || 0,
+            time: lastMessage?.created_at 
+              ? moment(lastMessage.created_at).fromNow()
+              : "No activity",
+            lastMessage: lastMessage?.message || "No messages yet",
+            memberImages: memberImages,
+            unreadCount: unreadCount || 0,
+            timestamp: lastMessage?.created_at 
+              ? new Date(lastMessage.created_at) 
+              : new Date(0),
+          };
+        })
+      );
+
+      // Sort by most recent message timestamp
+      const sortedGroups = groupsWithDetails.sort(
+        (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
+      );
+
+      setGroups(sortedGroups);
+    } catch (error) {
+      console.error("Error fetching groups:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserGroups();
+  }, []);
+
   return (
     <View
       style={{
@@ -322,9 +421,17 @@ const GroupChats = () => {
       className="flex-1 p-4"
     >
       <FlatList
-        data={groupChats}
+        data={groups}
         showsVerticalScrollIndicator={false}
         keyExtractor={(item) => item.id.toString()}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={fetchUserGroups}
+            colors={[Colors.light.primaryColor]}
+            tintColor={Colors.light.primaryColor}
+          />
+        }
         renderItem={({ item }) => (
           <Pressable
             onPress={() =>
@@ -366,7 +473,7 @@ const GroupChats = () => {
               </Text>
               <View className="flex-row items-center mt-0.5">
                 <Text className="text-sm text-gray-500">
-                  {item.members || "0"} members
+                  {item.members} members
                 </Text>
                 <View className="w-1.5 h-1.5 bg-gray-400 rounded-full mx-2" />
                 <Text className="text-sm text-gray-500">{item.time}</Text>
@@ -375,22 +482,20 @@ const GroupChats = () => {
               {/* Profile Images and Unread Count */}
               <View className="flex-row items-center mt-2">
                 <View className="flex-row">
-                  {/* Add more profile images here if needed */}
-                  {/* Additional profile images with overlapping effect */}
-                  {item.participants &&
-                    item.memberImages
-                      .slice(0, 2)
-                      .map((profile, idx) => (
-                        <Image
-                          key={`member-${idx}`}
-                          source={{ uri: profile }}
-                          className="size-10 rounded-full border-2 border-white shadow-sm"
-                          style={{ marginLeft: -8 }}
-                        />
-                      ))}
+                  {item.memberImages && 
+                    item.memberImages.slice(0, 3).map((profile, idx) => (
+                      <Image
+                        key={`member-${idx}`}
+                        source={{ 
+                          uri: profile || "https://images.unsplash.com/photo-1511367461989-f85a21fda167?q=80&w=3131&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                        }}
+                        className="w-6 h-6 rounded-full border-2 border-white"
+                        style={{ marginLeft: idx > 0 ? -8 : 0 }}
+                      />
+                    ))}
                 </View>
 
-                {(item.unreadCount ?? 0) > 0 && (
+                {(item.unreadCount > 0) && (
                   <View
                     className="rounded-full px-2 py-0.5 items-center justify-center ml-3"
                     style={{ backgroundColor: Colors.light.primaryColor }}
@@ -402,12 +507,18 @@ const GroupChats = () => {
                 )}
               </View>
             </View>
-
             {/* Arrow Icon */}
             <Text className="text-2xl text-gray-500 opacity-50">›</Text>
           </Pressable>
         )}
         contentContainerStyle={{ paddingBottom: 20 }}
+        ListEmptyComponent={
+          <View className="items-center justify-center p-6 opacity-70">
+            <Text className="text-gray-500 text-center">
+              No groups found. Pull down to refresh.
+            </Text>
+          </View>
+        }
       />
     </View>
   );
