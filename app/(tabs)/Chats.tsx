@@ -330,7 +330,7 @@ const GroupChats = () => {
       // Get all groups the user is a member of
       const { data: userGroups, error: userGroupsError } = await supabase
         .from('group_members')
-        .select("group_id, groups(id, name, created_at)")
+        .select("group_id, groups(id, name, created_at, image_url)")
         .eq('user_id', userId)
         .limit(1000);
 
@@ -376,10 +376,11 @@ const GroupChats = () => {
             .eq('group_id', group.id)
             .eq('is_read', false)
             .neq('sender_id', userId);
-
+        
           return {
             id: group.id,
             name: group.name,
+            image_url: group.image_url,
             members: memberCount || 0,
             time: lastMessage?.created_at 
               ? moment(lastMessage.created_at).fromNow()
@@ -455,15 +456,18 @@ const GroupChats = () => {
                 alignItems: "center",
               }}
             >
-              <Text
-                style={{
-                  fontSize: 20,
-                  color: Colors.light.primaryColor,
-                  fontWeight: "600",
+             {item.image_url ? (
+               <Image
+                style={{ width: 48, height: 48, borderRadius: 24 }} 
+                source={{
+                  uri: item.image_url
                 }}
-              >
+              />
+             ) : (
+              <Text style={{ fontSize: 20, color: Colors.light.primaryColor }}>
                 {item.name.charAt(0)}
               </Text>
+             )}
             </View>
 
             {/* Group Info */}

@@ -23,6 +23,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
+import { router } from "expo-router";
 
 const getGreeting = () => {
   const currentHour = new Date().getHours();
@@ -231,7 +232,9 @@ const Header = () => {
           </Animated.View>
         </TouchableOpacity>
 
-        <TouchableOpacity>
+        <TouchableOpacity
+        onPress={() => router.push("/Search")}
+        >
           <Animated.View style={iconAnimatedStyle}>
             <Ionicons
               name="search-outline"

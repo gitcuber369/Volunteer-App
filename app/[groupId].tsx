@@ -131,7 +131,7 @@ export default function GroupChatScreen() {
 
     const { error } = await supabase.from("group_messages").insert([
       {
-        group_id: groupId,
+        group_id: grouxpId,
         sender_id: userId,
         message: message.trim(),
       },
@@ -258,7 +258,7 @@ export default function GroupChatScreen() {
                 {item.users?.name || "User"}
               </Text>
             </View>
-            <Text style={{ fontSize: 14, }}>{item.message}</Text>
+            <Text style={{ fontSize: 14, color: item }}>{item.message}</Text>
           </View>
         ))}
       </ScrollView>
