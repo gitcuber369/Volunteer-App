@@ -14,6 +14,7 @@ import {
 import { supabase } from "@/service/supabaseClient";
 import { useLocalSearchParams, router } from "expo-router";
 import { Colors } from "@/constants/Colors";
+import AntDesign from '@expo/vector-icons/AntDesign';
 
 export default function GroupChatScreen() {
   const { groupId } = useLocalSearchParams();
@@ -131,7 +132,7 @@ export default function GroupChatScreen() {
 
     const { error } = await supabase.from("group_messages").insert([
       {
-        group_id: grouxpId,
+        group_id: groupId,
         sender_id: userId,
         message: message.trim(),
       },
@@ -157,7 +158,9 @@ export default function GroupChatScreen() {
           paddingTop: 50,
         }}
       >
-        <Button title="←" onPress={() => router.back()} color="white" />
+        <TouchableOpacity onPress={() => router.back()}>
+          <AntDesign name="arrowleft" size={24} color={Colors.light.primaryColor} />
+        </TouchableOpacity>
         {groupImage ? (
           <Image
             source={{ uri: groupImage }}
@@ -258,7 +261,7 @@ export default function GroupChatScreen() {
                 {item.users?.name || "User"}
               </Text>
             </View>
-            <Text style={{ fontSize: 14, color: item }}>{item.message}</Text>
+            <Text style={{ fontSize: 14, color: item.sender_id === currentUserId ? "white" : "black" }}>{item.message}</Text>
           </View>
         ))}
       </ScrollView>

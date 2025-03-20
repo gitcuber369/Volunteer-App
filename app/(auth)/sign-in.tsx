@@ -72,16 +72,20 @@ const SignIn = () => {
         
       }
       // Redirect based on role
-      if (role === "MasterAdmin") {
-        router.push({
-          pathname: "/(tabs)/Home/MasterAdminHome",
-          params: { role: "MasterAdminHome" },
-        });
-      } else {
-        router.push({
-          pathname: "/(tabs)/Home/VolunteerHome",
-          params: { role: "VolunteerHome" },
-        });
+      switch (role) {
+        case "MasterAdmin":
+          router.push({
+        pathname: "/(tabs)/Home/MasterAdminHome",
+        params: { role: "MasterAdminHome" },
+          });
+          break;
+        case "Volunteer":
+          router.push({
+        pathname: "/(tabs)/Home/VolunteerHome",
+        params: { role: "VolunteerHome" },
+          });
+          break;
+        
       }
 
       Alert.alert("Sign-In Successful", "Welcome back!");

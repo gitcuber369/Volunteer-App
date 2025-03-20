@@ -204,16 +204,23 @@ const Signup = () => {
       
 
       // **Redirect user based on role**
-      if (role === "MasterAdmin") {
-        router.replace({
-          pathname: "/(tabs)/Home/MasterAdminHome",
-          params: { role: "MasterAdminHome" },
-        });
-      } else {
-        router.replace({
-          pathname: "/(tabs)/Home/VolunteerHome",
-          params: { role: "VolunteerHome" },
-        });
+      switch (role) {
+        case "MasterAdmin":
+          router.replace({
+        pathname: "/(tabs)/Home/MasterAdminHome",
+        params: { role: "MasterAdminHome" },
+          });
+          break;
+        case "Volunteer":
+          router.replace({
+        pathname: "/(tabs)/Home/VolunteerHome",
+        params: { role: "VolunteerHome" },
+          });
+          break;
+       
+        default:
+          router.replace("/(auth)/sign-in");
+          break;
       }
     } catch (error) {
       console.error("Signup Error:", error);

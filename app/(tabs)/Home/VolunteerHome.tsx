@@ -1,4 +1,5 @@
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   Pressable,
@@ -15,8 +16,6 @@ import {
 } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/Colors";
-import { users } from "@/constants/data";
-import GroupsList from "@/components/OnlineComponent";
 import Animated, {
   Extrapolate,
   interpolate,
@@ -41,12 +40,30 @@ const getGreeting = () => {
   }
 };
 
-
-
-
 const VolunteerHome = () => {
   const { top } = useSafeAreaInsets();
-  const { userData } = useUserData();
+  const { userData, loading } = useUserData(); // Assuming loading state is provided by useUserData
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: Colors.light.background,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+        edges={["top"]}
+      >
+        <StatusBar animated={true} barStyle="dark-content" />
+        <ActivityIndicator size="large" color={Colors.light.primaryColor} />
+        <Text style={{ marginTop: 10, color: Colors.light.text }}>
+          Loading your profile...
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: Colors.light.background }}
@@ -159,7 +176,7 @@ const Header = () => {
           </Animated.View>
         </TouchableOpacity>
 
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push("/Search")}>
           <Animated.View style={iconAnimatedStyle}>
             <Ionicons
               name="search-outline"
@@ -307,7 +324,7 @@ const GroupChats = () => {
   const fetchUserGroups = async () => {
     try {
       setRefreshing(true);
-      
+
       // Get current authenticated user
       const { data: userData } = await supabase.auth.getUser();
       if (!userData?.user) {
@@ -319,9 +336,9 @@ const GroupChats = () => {
 
       // Get all groups the user is a member of
       const { data: userGroups, error: userGroupsError } = await supabase
-        .from('group_members')
+        .from("group_members")
         .select("group_id, groups(id, name, created_at)")
-        .eq('user_id', userId)
+        .eq("user_id", userId)
         .limit(1000);
 
       if (userGroupsError) {
@@ -329,56 +346,57 @@ const GroupChats = () => {
         return;
       }
       // Extract unique groups - ensure each item is a single object not an array
-   
-      const uniqueGroups = userGroups.map(item => item.groups);
+
+      const uniqueGroups = userGroups.map((item) => item.groups);
 
       // For each group, get member count and last message
       const groupsWithDetails = await Promise.all(
         uniqueGroups.map(async (group) => {
           // Get member count
           const { count: memberCount } = await supabase
-            .from('group_members')
-            .select('*', { count: 'exact' })
-            .eq('group_id', group.id);
+            .from("group_members")
+            .select("*", { count: "exact" })
+            .eq("group_id", group.id);
 
           // Get group members with profiles for avatars
           const { data: members } = await supabase
-            .from('group_members')
-            .select('users:user_id(id, name, profile_image)')
-            .eq('group_id', group.id)
+            .from("group_members")
+            .select("users:user_id(id, name, profile_image)")
+            .eq("group_id", group.id)
             .limit(3);
 
-          const memberImages = members?.map(m => m.users?.profile_image) || [];
+          const memberImages =
+            members?.map((m) => m.users?.profile_image) || [];
 
           // Get last message and unread count
           const { data: lastMessage } = await supabase
-            .from('group_messages')
-            .select('message, created_at')
-            .eq('group_id', group.id)
-            .order('created_at', { ascending: false })
+            .from("group_messages")
+            .select("message, created_at")
+            .eq("group_id", group.id)
+            .order("created_at", { ascending: false })
             .limit(1)
             .single();
 
           // Get unread message count for current user
           const { count: unreadCount } = await supabase
-            .from('group_messages')
-            .select('*', { count: 'exact' })
-            .eq('group_id', group.id)
-            .eq('is_read', false)
-            .neq('sender_id', userId);
+            .from("group_messages")
+            .select("*", { count: "exact" })
+            .eq("group_id", group.id)
+            .eq("is_read", false)
+            .neq("sender_id", userId);
 
           return {
             id: group.id,
             name: group.name,
             members: memberCount || 0,
-            time: lastMessage?.created_at 
+            time: lastMessage?.created_at
               ? moment(lastMessage.created_at).fromNow()
               : "No activity",
             lastMessage: lastMessage?.message || "No messages yet",
             memberImages: memberImages,
             unreadCount: unreadCount || 0,
-            timestamp: lastMessage?.created_at 
-              ? new Date(lastMessage.created_at) 
+            timestamp: lastMessage?.created_at
+              ? new Date(lastMessage.created_at)
               : new Date(0),
           };
         })
@@ -472,12 +490,14 @@ const GroupChats = () => {
               {/* Profile Images and Unread Count */}
               <View className="flex-row items-center mt-2">
                 <View className="flex-row">
-                  {item.memberImages && 
+                  {item.memberImages &&
                     item.memberImages.slice(0, 3).map((profile, idx) => (
                       <Image
                         key={`member-${idx}`}
-                        source={{ 
-                          uri: profile || "https://images.unsplash.com/photo-1511367461989-f85a21fda167?q=80&w=3131&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                        source={{
+                          uri:
+                            profile ||
+                            "https://images.unsplash.com/photo-1511367461989-f85a21fda167?q=80&w=3131&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
                         }}
                         className="w-6 h-6 rounded-full border-2 border-white"
                         style={{ marginLeft: idx > 0 ? -8 : 0 }}
@@ -485,7 +505,7 @@ const GroupChats = () => {
                     ))}
                 </View>
 
-                {(item.unreadCount > 0) && (
+                {item.unreadCount > 0 && (
                   <View
                     className="rounded-full px-2 py-0.5 items-center justify-center ml-3"
                     style={{ backgroundColor: Colors.light.primaryColor }}

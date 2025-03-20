@@ -16,6 +16,7 @@ import { supabase } from "@/service/supabaseClient";
 import { StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import { Colors } from "@/constants/Colors";
 
 // Define types for user data
 interface Church {
@@ -327,7 +328,7 @@ const Search: React.FC = () => {
       {searchQuery.length === 0 && currentUserChurchId && (
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionText}>
-            <Ionicons name="people" size={18} color="#4F46E5" style={styles.sectionIcon} />
+            <Ionicons name="people" size={18} color={Colors.light.background} style={styles.sectionIcon} />
             Church Members
           </Text>
           <Text style={styles.countBadge}>{users.length}</Text>
@@ -336,7 +337,7 @@ const Search: React.FC = () => {
 
       {loading && (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color={Colors.light.primaryColor} />
           <Text style={styles.loaderText}>Searching...</Text>
         </View>
       )}
@@ -363,7 +364,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
-    backgroundColor: "white",
+    backgroundColor: Colors.light.background,
   },
   headerTitle: {
     fontSize: 22,
@@ -416,7 +417,7 @@ const styles = StyleSheet.create({
   },
   countBadge: {
     backgroundColor: "#EEF2FF",
-    color: "#4F46E5",
+    color: Colors.light.primaryColor,
     fontWeight: "600",
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -499,7 +500,7 @@ const styles = StyleSheet.create({
   },
   userRole: {
     fontSize: 13,
-    color: "#4F46E5",
+    color: Colors.light.primaryColor,
     fontWeight: "600",
   },
   churchPill: {
@@ -522,18 +523,18 @@ const styles = StyleSheet.create({
   addButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#4F46E5",
+    backgroundColor: Colors.light.primaryColor,
     paddingVertical: 12,
     paddingHorizontal: 18,
     borderRadius: 12,
-    shadowColor: "#4F46E5",
+    shadowColor: Colors.light.primaryColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
     elevation: 4,
   },
   addButtonDisabled: {
-    backgroundColor: "#A5B4FC",
+    backgroundColor: Colors.light.primaryColor,
   },
   addButtonText: {
     color: "white",
