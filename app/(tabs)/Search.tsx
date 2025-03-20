@@ -328,8 +328,8 @@ const Search: React.FC = () => {
       {searchQuery.length === 0 && currentUserChurchId && (
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionText}>
-            <Ionicons name="people" size={18} color={Colors.light.background} style={styles.sectionIcon} />
-            Church Members
+          <Ionicons name="people" size={20} color={Colors.light.primaryColor} />
+            People
           </Text>
           <Text style={styles.countBadge}>{users.length}</Text>
         </View>

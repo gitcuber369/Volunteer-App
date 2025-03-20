@@ -6,6 +6,7 @@ import {
   ImageBackground,
   ScrollView,
   Alert,
+  Pressable,
 } from "react-native";
 import React, { useState } from "react";
 import { Colors } from "@/constants/Colors";
@@ -334,7 +335,7 @@ const Signup = () => {
               </View>
             </View>
 
-            <TouchableOpacity
+            <Pressable
               style={styles.checkboxContainer}
               onPress={() => setIsChurch(!isChurch)}
             >
@@ -352,7 +353,7 @@ const Signup = () => {
                 )}
               </View>
               <Text style={styles.checkboxLabel}>Register as Church</Text>
-            </TouchableOpacity>
+            </Pressable>
 
             {isChurch && (
               <>
@@ -431,7 +432,7 @@ const Signup = () => {
               disabled={isLoading}
             >
               <LinearGradient
-                colors={[Colors.light.primaryColor, "#5D3FD3"]}
+                colors={[Colors.light.primaryColor, Colors.light.primaryColor]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.gradient}
@@ -442,7 +443,7 @@ const Signup = () => {
                   <>
                     <Text style={styles.buttonText}>Sign Up</Text>
                     <MaterialIcons
-                      name="arrow-forward"
+                      name="arrow-forward" 
                       size={20}
                       color="white"
                     />
@@ -453,7 +454,9 @@ const Signup = () => {
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account?</Text>
-              <TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.replace("/(auth)/sign-in")}
+              >
                 <Text style={styles.loginText}>Log in</Text>
               </TouchableOpacity>
             </View>
