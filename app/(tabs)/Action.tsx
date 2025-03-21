@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Alert,
   Platform,
+  ScrollView,
 } from "react-native";
 import { supabase } from "@/service/supabaseClient";
 import * as ImagePicker from "expo-image-picker";
@@ -148,37 +149,40 @@ export default function CreateGroupScreen({ navigation }: any) {
       Alert.alert("Error", "Please enter a group name");
       return;
     }
-  
+
     if (selectedUsers.length === 0) {
       Alert.alert("Error", "Please select at least one member for the group");
       return;
     }
-  
+
     try {
       setIsLoading(true);
-      
+
       // Upload image if selected
       let uploadedImageUrl = null;
       if (imageUrl) {
         setIsUploading(true);
         uploadedImageUrl = await uploadImage(imageUrl, "group_images");
         setIsUploading(false);
-        
+
         if (!uploadedImageUrl) {
-          Alert.alert("Warning", "Failed to upload image, but proceeding with group creation");
+          Alert.alert(
+            "Warning",
+            "Failed to upload image, but proceeding with group creation"
+          );
         }
       }
-  
+
       // Get current user
       const {
         data: { user },
       } = await supabase.auth.getUser();
-  
+
       if (!user) {
         Alert.alert("Error", "You must be logged in to create a group");
         return;
       }
-  
+
       // Create the group in the database
       const { data: groupData, error: groupError } = await supabase
         .from("groups")
@@ -189,32 +193,32 @@ export default function CreateGroupScreen({ navigation }: any) {
         })
         .select()
         .single();
-  
+
       if (groupError) {
         throw groupError;
       }
-  
+
       // Rest of your existing code...
       // Add all selected members to the group
       const groupMembers = selectedUsers.map((userId) => ({
         group_id: groupData.id,
         user_id: userId,
       }));
-  
+
       // Add the creator as an admin
       groupMembers.push({
         group_id: groupData.id,
         user_id: user.id,
       });
-  
+
       const { error: memberError } = await supabase
         .from("group_members")
         .insert(groupMembers);
-  
+
       if (memberError) {
         throw memberError;
       }
-  
+
       Alert.alert("Success", "Group created successfully!", [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
@@ -225,95 +229,102 @@ export default function CreateGroupScreen({ navigation }: any) {
       setIsLoading(false);
     }
   }
-  
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.inputContainer}>
-        <TextInput
-          placeholder="Group Name"
-          value={name}
-          onChangeText={setName}
-          style={styles.input}
-        />
-
-        <View style={styles.profileImageContainer}>
-          <Text style={styles.label}>Profile Image</Text>
-          <TouchableOpacity
-            style={styles.imageSelector}
-            onPress={() => pickImage(setImageUrl)}
-          >
-            {imageUrl ? (
-              <Image
-                source={{ uri: imageUrl }}
-                style={{ width: 100, height: 100, borderRadius: 50 }}
-              />
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <MaterialIcons
-                  name="camera-alt"
-                  size={24}
-                  color={Colors.light.primaryColor}
-                />
-              </View>
-            )}
-            <Text style={styles.imageText}>
-              {imageUrl
-                ? "Change profile image"
-                : "Tap to select a profile image"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <Text style={styles.sectionTitle}>Select Members</Text>
-      <Text style={styles.selectedCount}>
-        Selected: {selectedUsers.length} member
-        {selectedUsers.length !== 1 ? "s" : ""}
-      </Text>
-
-      <FlatList
-        data={users}
-        keyExtractor={(item) => item.id}
-        style={styles.list}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() =>
-              setSelectedUsers((prev) =>
-                prev.includes(item.id)
-                  ? prev.filter((id) => id !== item.id)
-                  : [...prev, item.id]
-              )
-            }
-            style={[
-              styles.userItem,
-              selectedUsers.includes(item.id) && styles.selectedUserItem,
-            ]}
-          >
-            <View style={styles.userRow}>
-              <Image
-                source={{
-                  uri: item.profile_image || "https://via.placeholder.com/40",
-                }}
-                style={styles.profileImage}
-              />
-              <Text style={styles.userName}>{item.name}</Text>
-              {selectedUsers.includes(item.id) && (
-                <Text style={styles.checkmark}>✓</Text>
-              )}
-            </View>
-          </TouchableOpacity>
-        )}
-      />
-      <TouchableOpacity
-        style={[styles.createButton, isLoading && styles.disabledButton]}
-        onPress={createGroup}
-        disabled={isLoading}
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: "center",
+        }}
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.createButtonText}>
-          {isLoading ? "Creating..." : "Create Group"}
+        <View style={styles.inputContainer}>
+          <TextInput
+            placeholder="Group Name"
+            value={name}
+            onChangeText={setName}
+            style={styles.input}
+          />
+
+          <View style={styles.profileImageContainer}>
+            <Text style={styles.label}>Profile Image</Text>
+            <TouchableOpacity
+              style={styles.imageSelector}
+              onPress={() => pickImage(setImageUrl)}
+            >
+              {imageUrl ? (
+                <Image
+                  source={{ uri: imageUrl }}
+                  style={{ width: 100, height: 100, borderRadius: 50 }}
+                />
+              ) : (
+                <View style={styles.imagePlaceholder}>
+                  <MaterialIcons
+                    name="camera-alt"
+                    size={24}
+                    color={Colors.light.primaryColor}
+                  />
+                </View>
+              )}
+              <Text style={styles.imageText}>
+                {imageUrl
+                  ? "Change profile image"
+                  : "Tap to select a profile image"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>Select Members</Text>
+        <Text style={styles.selectedCount}>
+          Selected: {selectedUsers.length} member
+          {selectedUsers.length !== 1 ? "s" : ""}
         </Text>
-      </TouchableOpacity>
+
+        <FlatList
+          data={users}
+          keyExtractor={(item) => item.id}
+          style={styles.list}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() =>
+                setSelectedUsers((prev) =>
+                  prev.includes(item.id)
+                    ? prev.filter((id) => id !== item.id)
+                    : [...prev, item.id]
+                )
+              }
+              style={[
+                styles.userItem,
+                selectedUsers.includes(item.id) && styles.selectedUserItem,
+              ]}
+            >
+              <View style={styles.userRow}>
+                <Image
+                  source={{
+                    uri: item.profile_image || "https://via.placeholder.com/40",
+                  }}
+                  style={styles.profileImage}
+                />
+                <Text style={styles.userName}>{item.name}</Text>
+                {selectedUsers.includes(item.id) && (
+                  <Text style={styles.checkmark}>✓</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+        <TouchableOpacity
+          style={[styles.createButton, isLoading && styles.disabledButton]}
+          onPress={createGroup}
+          disabled={isLoading}
+        >
+          <Text style={styles.createButtonText}>
+            {isLoading ? "Creating..." : "Create Group"}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -324,11 +335,12 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   createButton: {
-    backgroundColor: "#0066cc",
+    backgroundColor: Colors.light.primaryColor,
     padding: 16,
     borderRadius: 8,
     alignItems: "center",
     marginVertical: 10,
+    marginBottom: 80,
   },
   disabledButton: {
     backgroundColor: "#cccccc",
@@ -358,17 +370,17 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: 8,
   },
   imageSelector: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   imageText: {
     marginTop: 8,
     color: Colors.light.primaryColor,
-    textAlign: 'center',
+    textAlign: "center",
   },
   previewImage: {
     width: 150,

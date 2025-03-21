@@ -6,11 +6,12 @@ import {
 import "@/global.css";
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -20,15 +21,43 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
+    async function prepare() {
+      try {
+        const sessionToken = await AsyncStorage.getItem("session_token");
+        const role = await AsyncStorage.getItem("user_role");
+
+        if (loaded) {
+          // Check if user is logged in
+          if (sessionToken && role) {
+                   if (role === "MasterAdmin") {
+                     router.replace({
+                       pathname: "/(tabs)/Home/MasterAdminHome",
+                       params: { role: "MasterAdminHome" },
+                     });
+                   } else {
+                     router.replace({
+                       pathname: "/(tabs)/Home/VolunteerHome",
+                       params: { role: "VolunteerHome" },
+                     });
+                   }
+                 }
+          // Hide splash screen once everything is ready
+          await SplashScreen.hideAsync();
+        }
+      } catch (error) {
+        console.warn('Error during app initialization:', error);
+        await SplashScreen.hideAsync();
+      }
     }
-  }, [loaded]);
+
+    prepare();
+  }, [loaded, router]);
 
   if (!loaded) {
     return null;

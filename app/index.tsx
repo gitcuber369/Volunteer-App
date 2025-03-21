@@ -1,15 +1,19 @@
-import { View, Text, Pressable, StyleSheet, Image } from "react-native";
-import React, { useState } from "react";
-import { router } from "expo-router";
 import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
-import LoginSheet from "@/components/LoginSheet";
-import { useEffect } from "react";
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Platform,
+  Alert,
+} from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { router } from "expo-router";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-// Custom hook for session check and redirection
+import LoginSheet from "@/components/LoginSheet";
+
+// Configure how notifications are handled when received
+
 const useSessionRedirect = () => {
   const [isChurch, setIsChurch] = useState(false);
 
@@ -21,9 +25,9 @@ const useSessionRedirect = () => {
 
         console.log("Session token:", sessionToken);
         console.log("Here is the role of the user", role);
-        
-        if(sessionToken && role) {
-          if(role === "MasterAdmin") {
+
+        if (sessionToken && role) {
+          if (role === "MasterAdmin") {
             router.replace({
               pathname: "/(tabs)/Home/MasterAdminHome",
               params: { role: "MasterAdminHome" },
@@ -35,8 +39,6 @@ const useSessionRedirect = () => {
             });
           }
         }
-
-
       } catch (error) {
         console.error("Error checking session:", error);
       }
@@ -45,10 +47,11 @@ const useSessionRedirect = () => {
     checkSession();
   }, []);
 };
+
 const Index = () => {
-  // Use the session redirect hook
   useSessionRedirect();
 
+  
   return (
     <View style={styles.container}>
       <Image
@@ -73,7 +76,7 @@ const styles = StyleSheet.create({
     paddingTop: 80,
   },
   icons: {
-    width: 250, // Reduce size if needed
+    width: 250,
     height: 250,
     resizeMode: "contain",
   },
@@ -84,4 +87,5 @@ const styles = StyleSheet.create({
     fontWeight: "400",
   },
 });
+
 export default Index;

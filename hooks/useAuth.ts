@@ -33,7 +33,7 @@ export const useUserData = () => {
           return;
         }
 
-        console.log("Session Token Found:", session_token);
+   
 
         const { data: user, error: userError } = await supabase.auth.getUser();
 
@@ -44,8 +44,6 @@ export const useUserData = () => {
         }
 
         const userId = user?.user?.id;
-        console.log("Authenticated User ID:", userId);
-
         if (!userId) {
           console.error("User ID not found.");
           setLoading(false);
@@ -64,7 +62,7 @@ export const useUserData = () => {
           return;
         }
 
-        console.log("Fetched User Data:", userData);
+       
         setUserData(userData);
       } catch (error) {
         console.error("Error fetching user data:", error);

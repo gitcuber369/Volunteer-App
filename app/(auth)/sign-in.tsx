@@ -48,8 +48,7 @@ const SignIn = () => {
         throw new Error("User ID not found after sign-in.");
       }
 
-      // Fetch user details from `users` table
-      console.log("Fetching user role...");
+   
       const { data: userData, error: userError } = await supabase
         .from("users")
         .select("role")
@@ -62,13 +61,12 @@ const SignIn = () => {
       }
 
       const role = userData?.role;
-      console.log("User role fetched:", role);
+      
       const session_token = authData.session?.access_token;
       if (session_token) {
         await AsyncStorage.setItem("session_token", session_token);
         await AsyncStorage.setItem("user_role", role);
-        console.log("Session token saved to AsyncStorage while login in.", session_token);
-        console.log("User role saved to AsyncStorage while login in.", role);
+       
         
       }
       // Redirect based on role

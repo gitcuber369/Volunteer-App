@@ -1,4 +1,5 @@
 import {
+  ActivityIndicator,
   Image,
   ScrollView,
   StatusBar,
@@ -24,6 +25,14 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 import { router } from "expo-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/service/supabaseClient";
+import moment from "moment";
+import {
+  FlatList,
+  Pressable,
+  RefreshControl,
+} from "react-native-gesture-handler";
 
 const getGreeting = () => {
   const currentHour = new Date().getHours();
@@ -65,9 +74,23 @@ const janeDoeData = {
     { value: 5, label: "Sep 9" },
   ],
 };
-
+ 
 const MasterAdminHome = () => {
   const { top } = useSafeAreaInsets();
+  const { loading } = useUserData();
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: Colors.light.background }}
+      >
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <ActivityIndicator size="large" color={Colors.light.primaryColor} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -145,8 +168,8 @@ const MasterAdminHome = () => {
             />
           </View>
           <InteractionTrendsCard />
-          <View>
-            <GroupsList />
+          <View >
+            <GroupChats />
           </View>
         </ScrollView>
       </View>
@@ -156,6 +179,7 @@ const MasterAdminHome = () => {
 
 const Header = () => {
   const scrollY = useSharedValue(0);
+  const { userData, loading } = useUserData();
   const animatedStyles = useAnimatedStyle(() => {
     return {
       transform: [
@@ -232,9 +256,7 @@ const Header = () => {
           </Animated.View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-        onPress={() => router.push("/Search")}
-        >
+        <TouchableOpacity onPress={() => router.push("/Search")}>
           <Animated.View style={iconAnimatedStyle}>
             <Ionicons
               name="search-outline"
@@ -274,17 +296,18 @@ const Header = () => {
             </View>
           </Animated.View>
         </TouchableOpacity>
-
-        <Animated.Image
-          source={{
-            uri: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=687&q=80",
-          }}
-          style={[
-            { width: 48, height: 48, borderRadius: 24 },
-            iconAnimatedStyle,
-          ]}
-          resizeMode="cover"
-        />
+        <TouchableOpacity onPress={() => router.push("/Profile")}>
+          <Animated.Image
+            source={{
+              uri: userData?.profile_image,
+            }}
+            style={[
+              { width: 48, height: 48, borderRadius: 24 },
+              iconAnimatedStyle,
+            ]}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
       </View>
     </Animated.View>
   );
@@ -360,7 +383,7 @@ const UserGreeting = () => {
           >
             <Ionicons name="business-outline" size={16} color="#9ca3af" />
             <Text style={{ marginLeft: 4, color: "#9ca3af", fontSize: 14 }}>
-             {userData?.church?.name}
+              {userData?.church?.name}
             </Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -545,5 +568,265 @@ const InteractionTrendsCard = () => (
     </View>
   </View>
 );
+
+const GroupChats = () => {
+  const [groups, setGroups] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchUserGroups = async () => {
+    try {
+      setRefreshing(true);
+
+      // Get current authenticated user
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        console.error("No authenticated user found");
+        return;
+      }
+
+      const userId = userData.user.id;
+
+      // Get all groups the user is a member of
+      const { data: userGroups, error: userGroupsError } = await supabase
+        .from("group_members")
+        .select("group_id, groups(id, name, created_at, image_url)")
+        .eq("user_id", userId)
+        .limit(1000);
+
+      if (userGroupsError) {
+        console.error("Error fetching user groups:", userGroupsError);
+        return;
+      }
+      // Extract unique groups - ensure each item is a single object not an array
+
+      const uniqueGroups = userGroups.map((item) => item.groups);
+
+      // For each group, get member count and last message
+      const groupsWithDetails = await Promise.all(
+        uniqueGroups.map(async (group) => {
+          // Get member count
+          const { count: memberCount } = await supabase
+            .from("group_members")
+            .select("*", { count: "exact" })
+            .eq("group_id", group.id);
+
+          // Get group members with profiles for avatars
+          const { data: members } = await supabase
+            .from("group_members")
+            .select("users:user_id(id, name, profile_image)")
+            .eq("group_id", group.id)
+            .limit(3);
+
+          const memberImages =
+            members?.map((m) => m.users?.profile_image) || [];
+
+          // Get last message and unread count
+          const { data: lastMessage } = await supabase
+            .from("group_messages")
+            .select("message, created_at")
+            .eq("group_id", group.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+
+          // Get unread message count for current user
+          const { count: unreadCount } = await supabase
+            .from("group_messages")
+            .select("*", { count: "exact" })
+            .eq("group_id", group.id)
+            .eq("is_read", false)
+            .neq("sender_id", userId);
+
+          return {
+            id: group.id,
+            name: group.name,
+            image_url: group.image_url,
+            members: memberCount || 0,
+            time: lastMessage?.created_at
+              ? moment(lastMessage.created_at).fromNow()
+              : "No activity",
+            lastMessage: lastMessage?.message || "No messages yet",
+            memberImages: memberImages,
+            unreadCount: unreadCount || 0,
+            timestamp: lastMessage?.created_at
+              ? new Date(lastMessage.created_at)
+              : new Date(0),
+          };
+        })
+      );
+
+      // Sort by most recent message timestamp
+      const sortedGroups = groupsWithDetails.sort(
+        (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
+      );
+
+      setGroups(sortedGroups);
+    } catch (error) {
+      console.error("Error fetching groups:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserGroups();
+  }, []);
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        padding: 16,
+      }}
+    >
+      <Text
+        style={{
+          color: Colors.light.text,
+          fontSize: 20,
+          fontWeight: "600",
+          marginBottom: 12,
+        }}
+      >
+        Group Chats
+      </Text>
+      <FlatList
+        data={groups}
+        showsVerticalScrollIndicator={false}
+        keyExtractor={(item) => item.id.toString()}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={fetchUserGroups}
+            colors={[Colors.light.primaryColor]}
+            tintColor={Colors.light.primaryColor}
+          />
+        }
+        renderItem={({ item }) => (
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: "/[groupId]",
+                params: { groupId: item.id },
+              })
+            }
+            android_ripple={{ color: "rgba(0,0,0,0.05)" }}
+            style={({ pressed }) => [
+              {
+                flexDirection: 'row',
+                alignItems: 'center',
+                padding: 16,
+                borderRadius: 12,
+                marginBottom: 12,
+                borderWidth: 1,
+                borderColor: '#e5e7eb',
+                opacity: pressed ? 0.7 : 1
+              }
+            ]}
+          >
+            {/* Group Icon */}
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: "rgba(37, 99, 235, 0.1)",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              {item.image_url ? (
+                <Image
+                  style={{ width: 48, height: 48, borderRadius: 24 }}
+                  source={{
+                    uri: item.image_url,
+                  }}
+                />
+              ) : (
+                <Text
+                  style={{ fontSize: 20, color: Colors.light.primaryColor }}
+                >
+                  {item.name.charAt(0)}
+                </Text>
+              )}
+            </View>
+
+            {/* Group Info */}
+            <View style={{ flex: 1, marginLeft: 16 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#1f2937' }}>
+                {item.name}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                <Text style={{ fontSize: 14, color: '#6b7280' }}>
+                  {item.members} members
+                </Text>
+                <View style={{ 
+                  width: 6, 
+                  height: 6, 
+                  backgroundColor: '#9ca3af', 
+                  borderRadius: 3,
+                  marginHorizontal: 8 
+                }} />
+                <Text style={{ fontSize: 14, color: '#6b7280' }}>{item.time}</Text>
+              </View>
+
+              {/* Profile Images and Unread Count */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                <View style={{ flexDirection: 'row' }}>
+                  {item.memberImages &&
+                    item.memberImages.slice(0, 3).map((profile, idx) => (
+                      <Image
+                        key={`member-${idx}`}
+                        source={{
+                          uri:
+                            profile ||
+                            "https://images.unsplash.com/photo-1511367461989-f85a21fda167?q=80&w=3131&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                        }}
+                        style={{ 
+                          width: 24, 
+                          height: 24, 
+                          borderRadius: 12,
+                          borderWidth: 2,
+                          borderColor: 'white',
+                          marginLeft: idx > 0 ? -8 : 0 
+                        }}
+                      />
+                    ))}
+                </View>
+
+                {item.unreadCount > 0 && (
+                  <View
+                    style={{ 
+                      backgroundColor: Colors.light.primaryColor,
+                      borderRadius: 12,
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginLeft: 12
+                    }}
+                  >
+                    <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
+                      {item.unreadCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+            {/* Arrow Icon */}
+            <Text style={{ fontSize: 24, color: '#6b7280', opacity: 0.5 }}>›</Text>
+          </Pressable>
+        )}
+        contentContainerStyle={{ paddingBottom: 20 }}
+        ListEmptyComponent={
+          <View style={{ alignItems: 'center', justifyContent: 'center', padding: 24, opacity: 0.7 }}>
+            <Text style={{ color: '#6b7280', textAlign: 'center' }}>
+              No groups found. Pull down to refresh.
+            </Text>
+          </View>
+        }
+      />
+    </View>
+  );
+};
 
 export default MasterAdminHome;

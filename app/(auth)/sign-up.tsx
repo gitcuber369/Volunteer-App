@@ -143,7 +143,7 @@ const Signup = () => {
         password,
         options: {
           data: {
-            name, // Store the user's name in authentication metadata
+            name, 
           },
         },
       });
