@@ -48,7 +48,6 @@ const SignIn = () => {
         throw new Error("User ID not found after sign-in.");
       }
 
-   
       const { data: userData, error: userError } = await supabase
         .from("users")
         .select("role")
@@ -61,29 +60,39 @@ const SignIn = () => {
       }
 
       const role = userData?.role;
-      
+
       const session_token = authData.session?.access_token;
       if (session_token) {
         await AsyncStorage.setItem("session_token", session_token);
         await AsyncStorage.setItem("user_role", role);
-       
-        
+        console.log("Session token saved:", role);
       }
       // Redirect based on role
       switch (role) {
         case "MasterAdmin":
           router.push({
-        pathname: "/(tabs)/Home/MasterAdminHome",
-        params: { role: "MasterAdminHome" },
+            pathname: "/(tabs)/Home/MasterAdminHome",
+            params: { role: "MasterAdminHome" },
           });
           break;
         case "Volunteer":
           router.push({
-        pathname: "/(tabs)/Home/VolunteerHome",
-        params: { role: "VolunteerHome" },
+            pathname: "/(tabs)/Home/VolunteerHome",
+            params: { role: "VolunteerHome" },
           });
           break;
-        
+        case "Admin":
+          router.push({
+            pathname: "/(tabs)/Home/AdminHome",
+            params: { role: "AdminHome" },
+          });
+          break;
+        default:
+          router.push({
+            pathname: "/(tabs)/Home/HomeScreen",
+            params: { role: "HomeScreen" },
+          });
+          break;
       }
 
       Alert.alert("Sign-In Successful", "Welcome back!");

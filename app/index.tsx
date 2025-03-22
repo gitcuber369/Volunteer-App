@@ -1,11 +1,4 @@
-import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  Platform,
-  Alert,
-} from "react-native";
+import { View, Text, StyleSheet, Image, Platform, Alert } from "react-native";
 import React, { useState, useEffect, useRef } from "react";
 import { router } from "expo-router";
 
@@ -27,16 +20,25 @@ const useSessionRedirect = () => {
         console.log("Here is the role of the user", role);
 
         if (sessionToken && role) {
-          if (role === "MasterAdmin") {
-            router.replace({
-              pathname: "/(tabs)/Home/MasterAdminHome",
-              params: { role: "MasterAdminHome" },
-            });
-          } else {
-            router.replace({
-              pathname: "/(tabs)/Home/VolunteerHome",
-              params: { role: "VolunteerHome" },
-            });
+          switch (role) {
+            case "MasterAdmin":
+              router.replace({
+                pathname: "/(tabs)/Home/MasterAdminHome",
+                params: { role: "MasterAdminHome" },
+              });
+              break;
+            case "Admin":
+              router.push({
+                pathname: "/(tabs)/Home/AdminHome",
+                params: { role: "AdminHome" },
+              });
+              break;
+            default:
+              router.replace({
+                pathname: "/(tabs)/Home/VolunteerHome",
+                params: { role: "VolunteerHome" },
+              });
+              break;
           }
         }
       } catch (error) {
@@ -51,7 +53,6 @@ const useSessionRedirect = () => {
 const Index = () => {
   useSessionRedirect();
 
-  
   return (
     <View style={styles.container}>
       <Image

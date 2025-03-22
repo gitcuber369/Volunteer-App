@@ -41,11 +41,15 @@ const Search: React.FC = () => {
     null
   );
   const [addingUserId, setAddingUserId] = useState<string | null>(null);
+  const [fadingUserId, setFadingUserId] = useState<string | null>(null);
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string>("");
   const [fadeAnim] = useState(new Animated.Value(0));
+  const [changingRoleId, setChangingRoleId] = useState<string | null>(null);
 
   useEffect(() => {
     // Fetch current user's church_id when component mounts
-    getCurrentUserChurchId();
+    getCurrentUserInfo();
     
     // Fade in animation
     Animated.timing(fadeAnim, {
@@ -66,7 +70,7 @@ const Search: React.FC = () => {
     }
   }, [searchQuery, currentUserChurchId]);
 
-  const getCurrentUserChurchId = async (): Promise<void> => {
+  const getCurrentUserInfo = async (): Promise<void> => {
     setLoading(true);
     const {
       data: { user },
@@ -75,14 +79,15 @@ const Search: React.FC = () => {
     if (user) {
       const { data, error } = await supabase
         .from("users")
-        .select("church_id")
+        .select("church_id, role")
         .eq("id", user.id)
         .single();
 
-      if (data && data.church_id) {
+      if (data) {
         setCurrentUserChurchId(data.church_id);
+        setCurrentUserRole(data.role);
       } else if (error) {
-        console.error("Error fetching current user's church:", error.message);
+        console.error("Error fetching current user's info:", error.message);
       }
     }
     setLoading(false);
@@ -182,9 +187,55 @@ const Search: React.FC = () => {
     }
   };
 
+  const promoteToAdmin = async (userId: string): Promise<void> => {
+    setChangingRoleId(userId);
+
+    try {
+      const { error } = await supabase
+        .from("users")
+        .update({ role: "Admin" })
+        .eq("id", userId);
+
+      if (error) {
+        Alert.alert("Error", "Failed to promote user: " + error.message);
+      } else {
+        // Update the local state to reflect the change
+        setUsers(
+          users.map((user) => {
+            if (user.id === userId) {
+              return {
+                ...user,
+                role: "Admin",
+              };
+            }
+            return user;
+          })
+        );
+
+        Alert.alert("Success", "User has been promoted to Admin!");
+        setExpandedUserId(null);
+      }
+    } catch (error) {
+      Alert.alert("Error", "An unexpected error occurred");
+      console.error(error);
+    } finally {
+      setChangingRoleId(null);
+    }
+  };
+
+  const toggleExpandUser = (userId: string): void => {
+    if (expandedUserId === userId) {
+      setExpandedUserId(null);
+    } else {
+      setExpandedUserId(userId);
+    }
+  };
+
   const renderUser: ListRenderItem<User> = ({ item, index }) => {
-    // Staggered animation for list items
-    const itemDelay = index * 100;
+    const isExpanded = expandedUserId === item.id;
+    const isMasterAdmin = currentUserRole === "MasterAdmin";
+    const canPromote = isMasterAdmin && item.role === "Volunteer" && item.church_id === currentUserChurchId;
+    const isAlreadyInChurch = item.church_id === currentUserChurchId;
     
     return (
       <Animated.View 
@@ -198,59 +249,113 @@ const Search: React.FC = () => {
                 outputRange: [50, 0]
               }) 
             }] 
-          }
+          },
+          isExpanded && styles.expandedCard
         ]}
       >
-        {item.profile_image ? (
-          <Image
-            source={{ uri: item.profile_image }}
-            style={styles.profileImage}
-          />
-        ) : (
-          <View style={[styles.profileImagePlaceholder, { backgroundColor: getRandomColor(item.name) }]}>
-            <Text style={styles.profileImagePlaceholderText}>
-              {item.name.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-        )}
-        <View style={styles.userInfo}>
-          <Text style={styles.userName}>{item.name}</Text>
-          <Text style={styles.userEmail}>{item.email}</Text>
-          <View style={styles.detailsContainer}>
-            <View style={styles.rolePill}>
-              <Text style={styles.userRole}>{item.role}</Text>
-            </View>
-            <View style={styles.churchPill}>
-              <FontAwesome5 name="church" size={12} color="#6B7280" style={styles.churchIcon} />
-              <Text style={styles.churchInfo}>
-                {item.church_id && item.churches
-                  ? item.churches.name
-                  : "Not associated"}
-              </Text>
-            </View>
-          </View>
-        </View>
-        <TouchableOpacity
-          style={[
-            styles.addButton,
-            item.church_id === currentUserChurchId && styles.addButtonDisabled,
-          ]}
-          onPress={() => addUserToChurch(item.id)}
-          disabled={item.church_id === currentUserChurchId}
+        <TouchableOpacity 
+          style={styles.userCardContent}
+          onPress={() => toggleExpandUser(item.id)}
+          activeOpacity={0.7}
         >
-          {addingUserId === item.id ? (
-            <ActivityIndicator size="small" color="white" />
+          {item.profile_image ? (
+            <Image
+              source={{ uri: item.profile_image }}
+              style={styles.profileImage}
+            />
           ) : (
-            <>
-              <Text style={styles.addButtonText}>
-                {item.church_id === currentUserChurchId ? "Added" : "Add"}
+            <View style={[styles.profileImagePlaceholder, { backgroundColor: getRandomColor(item.name) }]}>
+              <Text style={styles.profileImagePlaceholderText}>
+                {item.name.charAt(0).toUpperCase()}
               </Text>
-              {item.church_id !== currentUserChurchId && (
-                <Ionicons name="add-circle" size={14} color="white" style={styles.addIcon} />
+            </View>
+          )}
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>{item.name}</Text>
+            <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+             style={styles.userEmail}>{item.email}</Text>
+            <View style={styles.detailsContainer}>
+              <View style={[
+                styles.rolePill, 
+                item.role === "Admin" && styles.adminRolePill,
+                item.role === "MasterAdmin" && styles.masterAdminRolePill
+              ]}>
+                <Text style={[
+                  styles.userRole,
+                  item.role === "Admin" && styles.adminRoleText,
+                  item.role === "MasterAdmin" && styles.masterAdminRoleText
+                ]}>{item.role}</Text>
+              </View>
+              <View style={styles.churchPill}>
+                <FontAwesome5 name="church" size={12} color="#6B7280" style={styles.churchIcon} />
+                <Text 
+                numberOfLines={1}
+                style={styles.churchInfo}>
+                  {item.church_id && item.churches
+                    ? item.churches.name
+                    : "Not associated"}
+                </Text>
+              </View>
+            </View>
+          </View>
+          
+          {!isExpanded && !isAlreadyInChurch && (
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                addUserToChurch(item.id);
+              }}
+              disabled={addingUserId === item.id}
+            >
+              {addingUserId === item.id ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Text style={styles.addButtonText}>Add</Text>
+                  <Ionicons name="add-circle" size={14} color="white" style={styles.addIcon} />
+                </>
               )}
-            </>
+            </TouchableOpacity>
+          )}
+          
+          {!isExpanded && isAlreadyInChurch && (
+            <View style={styles.addedBadge}>
+              <Ionicons name="checkmark-circle" size={16} color="#10B981" style={{marginRight: 4}} />
+              <Text style={styles.addedText}>Added</Text>
+            </View>
+          )}
+          
+          {isMasterAdmin && (
+            <Ionicons 
+              name={isExpanded ? "chevron-up" : "chevron-down"} 
+              size={20} 
+              color="#6B7280" 
+              style={styles.expandIcon}
+            />
           )}
         </TouchableOpacity>
+
+        {isExpanded && canPromote && (
+          <View style={styles.expandedOptions}>
+            <TouchableOpacity 
+              style={styles.promoteButton}
+              onPress={() => promoteToAdmin(item.id)}
+              disabled={changingRoleId === item.id}
+            >
+              {changingRoleId === item.id ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Ionicons name="shield" size={16} color="white" style={{marginRight: 8}} />
+                  <Text style={styles.promoteButtonText}>Promote to Admin</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
       </Animated.View>
     );
   };
@@ -272,7 +377,7 @@ const Search: React.FC = () => {
     if (searchQuery.length > 2) {
       return (
         <View style={styles.emptyContainer}>
-          <Ionicons name="search" size={50} color="#D1D5DB" />
+          <Ionicons name="search" size={60} color="#D1D5DB" />
           <Text style={styles.emptyText}>No users found</Text>
           <Text style={styles.emptySubText}>Try a different search term</Text>
         </View>
@@ -280,7 +385,7 @@ const Search: React.FC = () => {
     } else if (currentUserChurchId && users.length === 0) {
       return (
         <View style={styles.emptyContainer}>
-          <Ionicons name="people" size={50} color="#D1D5DB" />
+          <Ionicons name="people" size={60} color="#D1D5DB" />
           <Text style={styles.emptyText}>No members in your church yet</Text>
           <Text style={styles.emptySubText}>Search for users to add them</Text>
         </View>
@@ -288,7 +393,7 @@ const Search: React.FC = () => {
     } else if (!currentUserChurchId) {
       return (
         <View style={styles.emptyContainer}>
-          <Ionicons name="home" size={50} color="#D1D5DB" />
+          <Ionicons name="home" size={60} color="#D1D5DB" />
           <Text style={styles.emptyText}>You are not part of any church</Text>
           <Text style={styles.emptySubText}>Join a church to add members</Text>
         </View>
@@ -314,6 +419,7 @@ const Search: React.FC = () => {
           onChangeText={setSearchQuery}
           style={styles.searchInput}
           placeholderTextColor="#9CA3AF"
+          clearButtonMode="while-editing"
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity 
@@ -325,31 +431,36 @@ const Search: React.FC = () => {
         )}
       </View>
 
-      {searchQuery.length === 0 && currentUserChurchId && (
+      {searchQuery.length === 0 && currentUserChurchId && users.length > 0 && (
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionText}>
-          <Ionicons name="people" size={20} color={Colors.light.primaryColor} />
-            People
-          </Text>
-          <Text style={styles.countBadge}>{users.length}</Text>
+          <View style={styles.sectionTextContainer}>
+            <Ionicons name="people" size={20} color={Colors.light.primaryColor} style={styles.sectionIcon} />
+            <Text style={styles.sectionText}>Church Members</Text>
+          </View>
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{users.length}</Text>
+          </View>
         </View>
       )}
 
-      {loading && (
+      {loading ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={Colors.light.primaryColor} />
-          <Text style={styles.loaderText}>Searching...</Text>
+          <Text style={styles.loaderText}>Loading users...</Text>
         </View>
+      ) : (
+        <FlatList<User>
+          data={users}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderUser}
+          ListEmptyComponent={renderEmptyList}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+        />
       )}
-
-      <FlatList<User>
-        data={users}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderUser}
-        ListEmptyComponent={renderEmptyList}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
     </SafeAreaView>
   );
 };
@@ -357,17 +468,17 @@ const Search: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f7fa",
+    backgroundColor: "#f8fafc",
   },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
-    backgroundColor: Colors.light.background,
+    backgroundColor: "white",
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "700",
     color: "#1F2937",
   },
@@ -376,18 +487,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginHorizontal: 20,
     marginTop: 16,
-    marginBottom: 16,
+    marginBottom: 20,
     backgroundColor: "white",
     borderRadius: 16,
     paddingHorizontal: 16,
+    height: 56,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 3,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
@@ -396,70 +508,84 @@ const styles = StyleSheet.create({
     color: "#1F2937",
   },
   clearButton: {
-    padding: 8,
+    padding: 6,
   },
   sectionContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  sectionTextContainer: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   sectionText: {
     fontSize: 18,
     fontWeight: "700",
     color: "#1F2937",
-    flexDirection: "row",
-    alignItems: "center",
   },
   sectionIcon: {
     marginRight: 8,
   },
   countBadge: {
     backgroundColor: "#EEF2FF",
-    color: Colors.light.primaryColor,
-    fontWeight: "600",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    overflow: "hidden",
+  },
+  countBadgeText: {
+    color: Colors.light.primaryColor,
+    fontWeight: "600",
+    fontSize: 14,
   },
   loaderContainer: {
-    paddingVertical: 40,
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
+    paddingBottom: 50,
   },
   loaderText: {
-    marginTop: 12,
+    marginTop: 16,
     fontSize: 16,
     color: "#6B7280",
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 30,
+    flexGrow: 1,
   },
   userCard: {
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: "white",
-    padding: 18,
-    borderRadius: 14,
+    borderRadius: 16,
     marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
+    overflow: "hidden",
+  },
+  expandedCard: {
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  userCardContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
   },
   profileImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     marginRight: 16,
   },
   profileImagePlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 16,
@@ -477,12 +603,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#1F2937",
-    marginBottom: 2,
+    marginBottom: 4,
   },
   userEmail: {
     fontSize: 14,
     color: "#6B7280",
-    marginBottom: 6,
+    marginBottom: 8,
   },
   detailsContainer: {
     flexDirection: "row",
@@ -492,25 +618,39 @@ const styles = StyleSheet.create({
   },
   rolePill: {
     backgroundColor: "#EEF2FF",
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
     marginRight: 8,
     marginBottom: 4,
+  },
+  adminRolePill: {
+    backgroundColor: "#ECFDF5",
+  },
+  masterAdminRolePill: {
+    backgroundColor: "#FEF3C7",
   },
   userRole: {
     fontSize: 13,
     color: Colors.light.primaryColor,
     fontWeight: "600",
   },
+  adminRoleText: {
+    color: "#059669",
+  },
+  masterAdminRoleText: {
+    color: "#D97706",
+  },
   churchPill: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#F3F4F6",
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
     marginBottom: 4,
+    flexShrink: 1,
+    maxWidth: '100%',
   },
   churchIcon: {
     marginRight: 4,
@@ -519,45 +659,89 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#6B7280",
     fontWeight: "500",
+    flexShrink: 1,
   },
   addButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: Colors.light.primaryColor,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: 12,
     shadowColor: Colors.light.primaryColor,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  addButtonDisabled: {
-    backgroundColor: Colors.light.primaryColor,
+    shadowRadius: 3,
+    elevation: 2,
   },
   addButtonText: {
     color: "white",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
   },
   addIcon: {
     marginLeft: 4,
   },
+  addedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ECFDF5",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  addedText: {
+    color: "#10B981",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  expandIcon: {
+    padding: 8,
+    marginLeft: 4,
+  },
+  expandedOptions: {
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+    padding: 16,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  promoteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.light.accent1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    shadowColor: Colors.light.accent1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  promoteButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
+  },
   emptyContainer: {
     alignItems: "center",
-    paddingVertical: 60,
+    justifyContent: "center",
+    paddingVertical: 80,
+    flex: 1,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "600",
-    color: "#6B7280",
-    marginTop: 12,
+    color: "#4B5563",
+    marginTop: 20,
   },
   emptySubText: {
-    fontSize: 14,
-    color: "#9CA3AF",
+    fontSize: 16,
+    color: "#6B7280",
     marginTop: 8,
+    textAlign: "center",
+    paddingHorizontal: 40,
   },
 });
 
