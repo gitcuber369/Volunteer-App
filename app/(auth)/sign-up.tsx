@@ -223,9 +223,9 @@ const Signup = () => {
           router.replace("/(auth)/sign-in");
           break;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Signup Error:", error);
-      Alert.alert("Signup Failed", error.message);
+      Alert.alert("Signup Failed", error.message || "An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
