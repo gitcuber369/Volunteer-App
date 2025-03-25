@@ -11,6 +11,7 @@ import {
   ListRenderItem,
   Animated,
   StatusBar,
+  ScrollView,
 } from "react-native";
 import { supabase } from "@/service/supabaseClient";
 import { StyleSheet } from "react-native";
@@ -46,6 +47,11 @@ const Search: React.FC = () => {
   const [currentUserRole, setCurrentUserRole] = useState<string>("");
   const [fadeAnim] = useState(new Animated.Value(0));
   const [changingRoleId, setChangingRoleId] = useState<string | null>(null);
+  const [groups, setGroups] = useState<{ id: string, name: string }[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [addingToGroup, setAddingToGroup] = useState<boolean>(false);
+  const [showGroupModal, setShowGroupModal] = useState<boolean>(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   useEffect(() => {
     // Fetch current user's church_id when component mounts
@@ -58,6 +64,12 @@ const Search: React.FC = () => {
       useNativeDriver: true,
     }).start();
   }, []);
+
+  useEffect(() => {
+    if (currentUserChurchId) {
+      fetchGroups();
+    }
+  }, [currentUserChurchId]);
 
   useEffect(() => {
     if (searchQuery.length > 2) {
@@ -91,6 +103,62 @@ const Search: React.FC = () => {
       }
     }
     setLoading(false);
+  };
+
+  const fetchGroups = async (): Promise<void> => {
+    if (!currentUserChurchId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("groups")
+        .select("id, name, created_by")
+        .eq("church_id", currentUserChurchId);
+
+      if (error) {
+        console.error("Error fetching groups:", error.message);
+      } else {
+        setGroups(data);
+      }
+    } catch (error) {
+      console.error("Exception fetching groups:", error);
+    }
+  };
+
+  const fetchUserChurchAndGroups = async (userId: string): Promise<{churchId: string | null, groupIds: string[]}> => {
+    try {
+      // Fetch user's church
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("church_id")
+        .eq("id", userId)
+        .single();
+
+      if (userError) {
+        console.error("Error fetching user's church:", userError.message);
+        return { churchId: null, groupIds: [] };
+      }
+
+      // Fetch user's groups
+      const { data: groupsData, error: groupsError } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", userId);
+
+      if (groupsError) {
+        console.error("Error fetching user's groups:", groupsError.message);
+        return { churchId: userData?.church_id || null, groupIds: [] };
+      }
+
+      const groupIds = groupsData.map(item => item.group_id);
+      
+      return {
+        churchId: userData?.church_id || null,
+        groupIds
+      };
+    } catch (error) {
+      console.error("Exception fetching user's church and groups:", error);
+      return { churchId: null, groupIds: [] };
+    }
   };
 
   const fetchChurchMembers = async (): Promise<void> => {
@@ -187,6 +255,52 @@ const Search: React.FC = () => {
     }
   };
 
+  const addUserToGroup = async (userId: string, groupId: string): Promise<void> => {
+    if (!groupId) {
+      Alert.alert("Error", "Please select a group");
+      return;
+    }
+
+    setAddingToGroup(true);
+
+    try {
+      // First, check if the user is already in the group
+      const { data: existingMembership, error: checkError } = await supabase
+        .from('group_members')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('group_id', groupId)
+        .single();
+
+      if (existingMembership) {
+        Alert.alert("Note", "User is already a member of this group");
+        setAddingToGroup(false);
+        setShowGroupModal(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('group_members')
+        .insert({
+          user_id: userId,
+          group_id: groupId,
+          role: 'Member'
+        });
+
+      if (error) {
+        Alert.alert("Error", "Failed to add user to group: " + error.message);
+      } else {
+        Alert.alert("Success", "User added to group successfully!");
+        setShowGroupModal(false);
+      }
+    } catch (error) {
+      Alert.alert("Error", "An unexpected error occurred");
+      console.error(error);
+    } finally {
+      setAddingToGroup(false);
+    }
+  };
+
   const promoteToAdmin = async (userId: string): Promise<void> => {
     setChangingRoleId(userId);
 
@@ -229,6 +343,12 @@ const Search: React.FC = () => {
     } else {
       setExpandedUserId(userId);
     }
+  };
+
+  const openGroupModal = (userId: string): void => {
+    setSelectedUserId(userId);
+    setSelectedGroupId(null);
+    setShowGroupModal(true);
   };
 
   const renderUser: ListRenderItem<User> = ({ item, index }) => {
@@ -291,8 +411,8 @@ const Search: React.FC = () => {
               <View style={styles.churchPill}>
                 <FontAwesome5 name="church" size={12} color="#6B7280" style={styles.churchIcon} />
                 <Text 
-                numberOfLines={1}
-                style={styles.churchInfo}>
+                  numberOfLines={1}
+                  style={styles.churchInfo}>
                   {item.church_id && item.churches
                     ? item.churches.name
                     : "Not associated"}
@@ -338,21 +458,31 @@ const Search: React.FC = () => {
           )}
         </TouchableOpacity>
 
-        {isExpanded && canPromote && (
+        {isExpanded && isAlreadyInChurch && (
           <View style={styles.expandedOptions}>
+            {canPromote && (
+              <TouchableOpacity 
+                style={styles.promoteButton}
+                onPress={() => promoteToAdmin(item.id)}
+                disabled={changingRoleId === item.id}
+              >
+                {changingRoleId === item.id ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <>
+                    <Ionicons name="shield" size={16} color="white" style={{marginRight: 8}} />
+                    <Text style={styles.promoteButtonText}>Promote to Admin</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+            
             <TouchableOpacity 
-              style={styles.promoteButton}
-              onPress={() => promoteToAdmin(item.id)}
-              disabled={changingRoleId === item.id}
+              style={styles.groupButton}
+              onPress={() => openGroupModal(item.id)}
             >
-              {changingRoleId === item.id ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <>
-                  <Ionicons name="shield" size={16} color="white" style={{marginRight: 8}} />
-                  <Text style={styles.promoteButtonText}>Promote to Admin</Text>
-                </>
-              )}
+              <Ionicons name="people" size={16} color="white" style={{marginRight: 8}} />
+              <Text style={styles.groupButtonText}>Add to Group</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -403,6 +533,78 @@ const Search: React.FC = () => {
     return null;
   };
 
+  const renderGroupModal = () => {
+    if (!showGroupModal) return null;
+    
+    return (
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add to Group</Text>
+            <TouchableOpacity onPress={() => setShowGroupModal(false)}>
+              <Ionicons name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={styles.modalSubtitle}>
+            Select a group to add this member to:
+          </Text>
+          
+          <ScrollView style={styles.groupList}>
+            {groups.length === 0 ? (
+              <Text style={styles.noGroupsText}>No groups available</Text>
+            ) : (
+              groups.map(group => (
+                <TouchableOpacity
+                  key={group.id}
+                  style={[
+                    styles.groupItem,
+                    selectedGroupId === group.id && styles.selectedGroupItem
+                  ]}
+                  onPress={() => setSelectedGroupId(group.id)}
+                >
+                  <Text style={[
+                    styles.groupItemText,
+                    selectedGroupId === group.id && styles.selectedGroupItemText
+                  ]}>
+                    {group.name}
+                  </Text>
+                  {selectedGroupId === group.id && (
+                    <Ionicons name="checkmark-circle" size={20} color={Colors.light.primaryColor} />
+                  )}
+                </TouchableOpacity>
+              ))
+            )}
+          </ScrollView>
+          
+          <View style={styles.modalFooter}>
+            <TouchableOpacity 
+              style={styles.cancelButton}
+              onPress={() => setShowGroupModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[
+                styles.confirmButton,
+                (!selectedGroupId || addingToGroup) && styles.disabledButton
+              ]}
+              onPress={() => selectedUserId && selectedGroupId && addUserToGroup(selectedUserId, selectedGroupId)}
+              disabled={!selectedGroupId || addingToGroup}
+            >
+              {addingToGroup ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text style={styles.confirmButtonText}>Add to Group</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f5f7fa" />
@@ -435,7 +637,7 @@ const Search: React.FC = () => {
         <View style={styles.sectionContainer}>
           <View style={styles.sectionTextContainer}>
             <Ionicons name="people" size={20} color={Colors.light.primaryColor} style={styles.sectionIcon} />
-            <Text style={styles.sectionText}>Church Members</Text>
+            <Text style={styles.sectionText}>People</Text>
           </View>
           <View style={styles.countBadge}>
             <Text style={styles.countBadgeText}>{users.length}</Text>
@@ -461,9 +663,12 @@ const Search: React.FC = () => {
           windowSize={10}
         />
       )}
+      
+      {renderGroupModal()}
     </SafeAreaView>
   );
-};
+}
+
 
 const styles = StyleSheet.create({
   container: {
@@ -705,6 +910,7 @@ const styles = StyleSheet.create({
     padding: 16,
     flexDirection: "row",
     justifyContent: "flex-end",
+    gap: 10,
   },
   promoteButton: {
     flexDirection: "row",
@@ -720,6 +926,24 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   promoteButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  groupButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#4F46E5",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    shadowColor: "#4F46E5",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  groupButtonText: {
     color: "white",
     fontSize: 14,
     fontWeight: "600",
@@ -742,6 +966,111 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "center",
     paddingHorizontal: 40,
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  modalContainer: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    width: "90%",
+    maxWidth: 400,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: "#4B5563",
+    marginBottom: 16,
+  },
+  groupList: {
+    maxHeight: 300,
+    marginBottom: 16,
+  },
+  groupItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: "#F3F4F6",
+  },
+  selectedGroupItem: {
+    backgroundColor: "#EEF2FF",
+    borderWidth: 1,
+    borderColor: Colors.light.primaryColor,
+  },
+  groupItemText: {
+    fontSize: 16,
+    color: "#4B5563",
+    fontWeight: "500",
+  },
+  selectedGroupItemText: {
+    color: Colors.light.primaryColor,
+    fontWeight: "600",
+  },
+  noGroupsText: {
+    fontSize: 16,
+    color: "#6B7280",
+    textAlign: "center",
+    padding: 20,
+  },
+  modalFooter: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 12,
+  },
+  cancelButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+  },
+  cancelButtonText: {
+    color: "#4B5563",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  confirmButton: {
+    backgroundColor: Colors.light.primaryColor,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  confirmButtonText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  disabledButton: {
+    backgroundColor: "#9CA3AF",
+    opacity: 0.7,
   },
 });
 

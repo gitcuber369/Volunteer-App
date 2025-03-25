@@ -70,25 +70,25 @@ const SignIn = () => {
       // Redirect based on role
       switch (role) {
         case "MasterAdmin":
-          router.push({
+          router.replace({
             pathname: "/(tabs)/Home/MasterAdminHome",
             params: { role: "MasterAdminHome" },
           });
           break;
         case "Volunteer":
-          router.push({
+          router.replace({
             pathname: "/(tabs)/Home/VolunteerHome",
             params: { role: "VolunteerHome" },
           });
           break;
         case "Admin":
-          router.push({
+          router.replace({
             pathname: "/(tabs)/Home/AdminHome",
             params: { role: "AdminHome" },
           });
           break;
         default:
-          router.push({
+          router.replace({
             pathname: "/(tabs)/Home/HomeScreen",
             params: { role: "HomeScreen" },
           });

@@ -19,6 +19,9 @@ import { decode } from "base64-arraybuffer";
 import * as FileSystem from "expo-file-system";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Colors } from "@/constants/Colors";
+
+
+
 export default function CreateGroupScreen({ navigation }: any) {
   const [name, setName] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -183,6 +186,17 @@ export default function CreateGroupScreen({ navigation }: any) {
         return;
       }
 
+      // Get the current user's church_id from the users table
+      const { data: userData, error: userDataError } = await supabase
+        .from("users")
+        .select("church_id")
+        .eq("id", user.id)
+        .single();
+        
+      if (userDataError) {
+        throw userDataError;
+      }
+
       // Create the group in the database
       const { data: groupData, error: groupError } = await supabase
         .from("groups")
@@ -190,6 +204,7 @@ export default function CreateGroupScreen({ navigation }: any) {
           name,
           image_url: uploadedImageUrl, // Use the uploaded image URL here
           created_by: user.id,
+          church_id: userData.church_id,
         })
         .select()
         .single();
@@ -198,17 +213,18 @@ export default function CreateGroupScreen({ navigation }: any) {
         throw groupError;
       }
 
-      // Rest of your existing code...
-      // Add all selected members to the group
+      // Add selected members to the group as "Member"
       const groupMembers = selectedUsers.map((userId) => ({
         group_id: groupData.id,
         user_id: userId,
+        role: "Member"  // Set selected users as Members
       }));
 
-      // Add the creator as an admin
+      // Add the creator as an "Admin"
       groupMembers.push({
         group_id: groupData.id,
         user_id: user.id,
+        role: "Admin"  // Set creator as Admin
       });
 
       const { error: memberError } = await supabase
