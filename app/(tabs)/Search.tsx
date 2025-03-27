@@ -933,11 +933,11 @@ const styles = StyleSheet.create({
   groupButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#4F46E5",
+    backgroundColor: Colors.light.primaryColor,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
-    shadowColor: "#4F46E5",
+    shadowColor:  Colors.light.primaryColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,

@@ -14,7 +14,7 @@ import {
 import { supabase } from "@/service/supabaseClient";
 import { useLocalSearchParams, router } from "expo-router";
 import { Colors } from "@/constants/Colors";
-import AntDesign from '@expo/vector-icons/AntDesign';
+import AntDesign from "@expo/vector-icons/AntDesign";
 
 export default function GroupChatScreen() {
   const { groupId } = useLocalSearchParams();
@@ -159,40 +159,53 @@ export default function GroupChatScreen() {
         }}
       >
         <TouchableOpacity onPress={() => router.back()}>
-          <AntDesign name="arrowleft" size={24} color={Colors.light.primaryColor} />
-        </TouchableOpacity>
-        {groupImage ? (
-          <Image
-            source={{ uri: groupImage }}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              marginHorizontal: 10,
-            }}
+          <AntDesign
+            name="arrowleft"
+            size={24}
+            color={Colors.light.primaryColor}
           />
-        ) : (
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: Colors.light.primaryColor,
-              justifyContent: "center",
-              alignItems: "center",
-              marginHorizontal: 10,
-            }}
-          >
-            <Text style={{ color: "white", fontWeight: "bold" }}>
-              {groupName.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-        )}
-        <Text style={{ color: "black", fontSize: 18, fontWeight: "semibold" }}>
-          {groupName}
-        </Text>
-      </View>
+        </TouchableOpacity>
 
+        {/* Entire group info as a touchable */}
+        <TouchableOpacity
+          onPress={() => router.push({
+            pathname: "/groupMembers/[groupId]",
+            params: { groupId: groupId.toString() }
+          })}
+          style={{ flexDirection: "row", alignItems: "center" }}
+        >
+          {groupImage ? (
+            <Image
+              source={{ uri: groupImage }}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                marginHorizontal: 10,
+              }}
+            />
+          ) : (
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: Colors.light.primaryColor,
+                justifyContent: "center",
+                alignItems: "center",
+                marginHorizontal: 10,
+              }}
+            >
+              <Text style={{ color: "white", fontWeight: "bold" }}>
+                {groupName.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
+          <Text style={{ color: "black", fontSize: 18, fontWeight: "600" }}>
+            {groupName}
+          </Text>
+        </TouchableOpacity>
+      </View>
       {/* Messages */}
       <ScrollView
         ref={scrollViewRef}
@@ -261,7 +274,14 @@ export default function GroupChatScreen() {
                 {item.users?.name || "User"}
               </Text>
             </View>
-            <Text style={{ fontSize: 14, color: item.sender_id === currentUserId ? "white" : "black" }}>{item.message}</Text>
+            <Text
+              style={{
+                fontSize: 14,
+                color: item.sender_id === currentUserId ? "white" : "black",
+              }}
+            >
+              {item.message}
+            </Text>
           </View>
         ))}
       </ScrollView>
