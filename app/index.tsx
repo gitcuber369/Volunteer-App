@@ -33,8 +33,14 @@ const useSessionRedirect = () => {
                 params: { role: "AdminHome" },
               });
               break;
-            default:
-              router.replace({
+            case "TeamLead":
+              router.push({
+                pathname: "/(tabs)/Home/TeamLead",
+                params: { role: "TeamLead" },
+              });
+              break;
+            case "Volunteer":
+              router.push({
                 pathname: "/(tabs)/Home/VolunteerHome",
                 params: { role: "VolunteerHome" },
               });

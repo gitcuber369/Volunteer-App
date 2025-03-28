@@ -72,8 +72,9 @@ const Search: React.FC = () => {
   }, [currentUserChurchId]);
 
   useEffect(() => {
-    if (searchQuery.length > 2) {
-      fetchUsers();
+    if (searchQuery.length > 2 && currentUserChurchId) {
+      // Modified to only search within users who have the same church_id
+      fetchChurchMembersWithSearch();
     } else if (currentUserChurchId) {
       // Show church members when no search or search is too short
       fetchChurchMembers();
@@ -185,6 +186,33 @@ const Search: React.FC = () => {
     }
   };
 
+  // New function to search within church members only
+  const fetchChurchMembersWithSearch = async (): Promise<void> => {
+    if (!currentUserChurchId) return;
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select(
+          "id, name, email, role, profile_image, church_id, churches(name)"
+        )
+        .eq("church_id", currentUserChurchId)
+        .ilike("name", `%${searchQuery}%`);
+
+      if (error) {
+        console.error("Error searching church members:", error.message);
+      } else {
+        setUsers(data as User[]);
+      }
+    } catch (error) {
+      console.error("Exception searching church members:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Keeping this function for reference, but it won't be used anymore
   const fetchUsers = async (): Promise<void> => {
     setLoading(true);
     try {
@@ -356,7 +384,6 @@ const Search: React.FC = () => {
     const isMasterAdmin = currentUserRole === "MasterAdmin";
     const canPromote = isMasterAdmin && item.role === "Volunteer" && item.church_id === currentUserChurchId;
     const isAlreadyInChurch = item.church_id === currentUserChurchId;
-    
     return (
       <Animated.View 
         style={[

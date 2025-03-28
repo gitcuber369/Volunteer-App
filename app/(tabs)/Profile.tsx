@@ -20,7 +20,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/service/supabaseClient";
 import { router } from "expo-router";
 import { useUserData } from "@/hooks/useAuth";
-
+import dayjs from "dayjs";
 async function handleLogout() {
   try {
     await AsyncStorage.removeItem("session_token");
@@ -41,23 +41,65 @@ const Profile = () => {
   const { top } = useSafeAreaInsets();
   const { userData } = useUserData();
   const [loading, setLoading] = useState(false);
+  const [engagementStats, setEngagementStats] = useState({
+    green: 0,
+    yellow: 0,
+    red: 0,
+  });
 
-  // Call fetchUserData when the component mounts
+  const canViewEngagementStats =
+    userData?.role === "Admin" ||
+    userData?.role === "MasterAdmin" ||
+    userData?.role === "TeamLead";
 
-  const admin = {
-    name: "John Doe",
-    email: "admin@church.org",
-    role: "Master Admin",
-    church: {
-      name: "Grace Church",
-      logo: "assets/images/icon/icon.png",
-    },
-    engagementStats: {
-      green: 35,
-      yellow: 10,
-      red: 5,
-    },
-  };
+  useEffect(() => {
+    const fetchEngagementStats = async () => {
+      try {
+        const { data: messages, error } = await supabase
+          .from("messages")
+          .select("receiver_id, created_at")
+          .eq("sender_id", userData?.id);
+
+        if (error) throw error;
+
+        const now = dayjs();
+        const grouped = { green: new Set(), yellow: new Set(), red: new Set() };
+        const lastSentMap = {};
+
+        messages.forEach((msg) => {
+          const receiverId = msg.receiver_id;
+          const sentDate = dayjs(msg.created_at);
+
+          if (
+            !lastSentMap[receiverId] ||
+            sentDate.isAfter(lastSentMap[receiverId])
+          ) {
+            lastSentMap[receiverId] = sentDate;
+          }
+        });
+
+        Object.entries(lastSentMap).forEach(([receiverId, lastSent]) => {
+          const diffDays = now.diff(lastSent, "day");
+          if (diffDays <= 10) grouped.green.add(receiverId);
+          else if (diffDays > 10 && diffDays <= 20)
+            grouped.yellow.add(receiverId);
+          else if (diffDays > 30) grouped.red.add(receiverId);
+        });
+
+        setEngagementStats({
+          green: grouped.green.size,
+          yellow: grouped.yellow.size,
+          red: grouped.red.size,
+        });
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+      }
+    };
+
+    if (canViewEngagementStats && userData?.id) {
+      fetchEngagementStats();
+    }
+  }, [userData]);
 
   return (
     <SafeAreaView>
@@ -66,56 +108,81 @@ const Profile = () => {
         showsVerticalScrollIndicator={false}
       >
         <View>
-              <View style={styles.header}>
-              <Image
-                source={userData?.church?.logo ? { uri: userData?.church?.logo } : { uri: "https://via.placeholder.com/100" }}
-                style={styles.churchLogo}
-              />
-              <Text style={styles.churchName}>{userData?.church?.name || 'Your Church'}</Text>
-              </View>
-          {/* Admin Details */}
+          <View style={styles.header}>
+            <Image
+              source={
+                userData?.church?.logo
+                  ? { uri: userData?.church?.logo }
+                  : { uri: "https://via.placeholder.com/100" }
+              }
+              style={styles.churchLogo}
+            />
+            <Text style={styles.churchName}>
+              {userData?.church?.name || "Your Church"}
+            </Text>
+          </View>
+
           <View style={styles.profileCard}>
             <View style={styles.profileImageContainer}>
               <Image
                 source={{ uri: userData?.profile_image }}
                 style={styles.profileImage}
               />
-              <Text style={styles.adminName}>
-                {userData?.name || admin.name}
-              </Text>
+              <Text style={styles.adminName}>{userData?.name}</Text>
               <View style={styles.editIconContainer}>
                 <Ionicons name="pencil" size={14} color="white" />
               </View>
             </View>
-            <Text style={styles.adminName}>{userData?.name}</Text>
             <Text style={styles.adminEmail}>{userData?.email}</Text>
             <Text style={styles.adminRole}>{userData?.role}</Text>
           </View>
-          {/* Volunteer Engagement Stats */}
-          <View style={styles.statsCard}>
-            <Text style={styles.sectionTitle}>Volunteer Engagement</Text>
-            <View style={styles.statsContainer}>
-              <View style={[styles.statBox, { backgroundColor: "#10B981" }]}>
-                <Text style={styles.statNumber}>
-                  {admin.engagementStats.green}
-                </Text>
-                <Text style={styles.statLabel}>Green</Text>
-              </View>
-              <View style={[styles.statBox, { backgroundColor: "#F59E0B" }]}>
-                <Text style={styles.statNumber}>
-                  {admin.engagementStats.yellow}
-                </Text>
-                <Text style={styles.statLabel}>Yellow</Text>
-              </View>
-              <View style={[styles.statBox, { backgroundColor: "#EF4444" }]}>
-                <Text style={styles.statNumber}>
-                  {admin.engagementStats.red}
-                </Text>
-                <Text style={styles.statLabel}>Red</Text>
+
+          {canViewEngagementStats ? (
+            <View style={styles.statsCard}>
+              <Text style={styles.sectionTitle}>Volunteer Engagement</Text>
+              <View style={styles.statsContainer}>
+                <View style={[styles.statBox, { backgroundColor: "#10B981" }]}>
+                  <Text style={styles.statNumber}>{engagementStats.green}</Text>
+                  <Text style={styles.statLabel}>Green</Text>
+                </View>
+                <View style={[styles.statBox, { backgroundColor: "#F59E0B" }]}>
+                  <Text style={styles.statNumber}>
+                    {engagementStats.yellow}
+                  </Text>
+                  <Text style={styles.statLabel}>Yellow</Text>
+                </View>
+                <View style={[styles.statBox, { backgroundColor: "#EF4444" }]}>
+                  <Text style={styles.statNumber}>{engagementStats.red}</Text>
+                  <Text style={styles.statLabel}>Red</Text>
+                </View>
               </View>
             </View>
-          </View>
-          {/* Actions */}
+          ) : (
+            <View style={styles.statsCard}>
+              <Text style={styles.sectionTitle}>My Volunteering</Text>
+              <View style={styles.statsContainer}>
+                <View
+                  style={[
+                    styles.statBox,
+                    { backgroundColor: Colors.light.primaryColor },
+                  ]}
+                >
+                  <Text style={styles.statNumber}>0</Text>
+                  <Text style={styles.statLabel}>Hours This Month</Text>
+                </View>
+                <View
+                  style={[
+                    styles.statBox,
+                    { backgroundColor: Colors.light.accent2 },
+                  ]}
+                >
+                  <Text style={styles.statNumber}>0</Text>
+                  <Text style={styles.statLabel}>Events Attended</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
           <View style={styles.actionCard}>
             <TouchableOpacity style={styles.actionButton}>
               <Ionicons name="people-outline" size={24} color="#2563eb" />
@@ -130,24 +197,23 @@ const Profile = () => {
               <Text style={styles.actionText}>Messaging</Text>
             </TouchableOpacity>
           </View>
-          {/* Logout Button */}
-   
-            <TouchableOpacity
+
+          <TouchableOpacity
             style={[styles.logoutButton, { opacity: loading ? 0.5 : 1 }]}
             onPress={async () => {
               handleLogout();
             }}
             disabled={loading}
-            >
+          >
             {loading ? (
               <ActivityIndicator size="small" color="white" />
             ) : (
               <>
-              <Ionicons name="log-out-outline" size={24} color="white" />
-              <Text style={styles.logoutText}>Logout</Text>
+                <Ionicons name="log-out-outline" size={24} color="white" />
+                <Text style={styles.logoutText}>Logout</Text>
               </>
             )}
-            </TouchableOpacity>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>

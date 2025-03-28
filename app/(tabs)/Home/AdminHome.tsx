@@ -27,13 +27,7 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/service/supabaseClient";
 import moment from "moment";
-
-// Volunteer contact status data
-const contactStatus = {
-  red: 5, // not contacted for more than a month
-  yellow: 12, // not contacted for weeks
-  green: 24, // recently contacted
-};
+import dayjs from "dayjs";
 
 const getGreeting = () => {
   const currentHour = new Date().getHours();
@@ -50,6 +44,60 @@ const AdminHome = () => {
   const { top } = useSafeAreaInsets();
   const { userData, loading } = useUserData();
   const [isGroupsLoading, setIsGroupsLoading] = useState(true);
+  const [engagementStats, setEngagementStats] = useState({
+    green: 0,
+    yellow: 0,
+    red: 0,
+  });
+
+  useEffect(() => {
+    const fetchEngagementStats = async () => {
+      try {
+        const { data: messages, error } = await supabase
+          .from("messages")
+          .select("receiver_id, created_at")
+          .eq("sender_id", userData?.id);
+
+        if (error) throw error;
+
+        const now = dayjs();
+        const grouped = { green: new Set(), yellow: new Set(), red: new Set() };
+        const lastSentMap = {};
+
+        messages.forEach((msg) => {
+          const receiverId = msg.receiver_id;
+          const sentDate = dayjs(msg.created_at);
+
+          if (
+            !lastSentMap[receiverId] ||
+            sentDate.isAfter(lastSentMap[receiverId])
+          ) {
+            lastSentMap[receiverId] = sentDate;
+          }
+        });
+
+        Object.entries(lastSentMap).forEach(([receiverId, lastSent]) => {
+          const diffDays = now.diff(lastSent, "day");
+          if (diffDays <= 10) grouped.green.add(receiverId);
+          else if (diffDays > 10 && diffDays <= 20)
+            grouped.yellow.add(receiverId);
+          else if (diffDays > 30) grouped.red.add(receiverId);
+        });
+
+        setEngagementStats({
+          green: grouped.green.size,
+          yellow: grouped.yellow.size,
+          red: grouped.red.size,
+        });
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+      }
+    };
+
+    if (userData?.id) {
+      fetchEngagementStats();
+    }
+  }, [userData]);
 
   if (loading) {
     return (
@@ -81,9 +129,9 @@ const AdminHome = () => {
         <Header />
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={{ paddingHorizontal: 16 }}>
-            <UserGreeting />
-            <ContactStatusCards />
-          </View>
+              <UserGreeting />
+              <ContactStatusCards engagementStats={engagementStats} />
+            </View>
           <Text
             style={{
               color: Colors.light.text,
@@ -111,14 +159,13 @@ const AdminHome = () => {
           >
             Active Volunteers
           </Text>
-         
         </ScrollView>
       </View>
     </SafeAreaView>
   );
 };
 
-const ContactStatusCards = () => (
+const ContactStatusCards = ({ engagementStats }) => (
   <View style={{ marginTop: 16 }}>
     <Text
       style={{
@@ -157,7 +204,7 @@ const ContactStatusCards = () => (
           Urgent
         </Text>
         <Text style={{ color: "#D32F2F", fontSize: 24, fontWeight: "700" }}>
-          {contactStatus.red}
+        {engagementStats.red}
         </Text>
         <Text style={{ color: "#B71C1C", fontSize: 12, marginTop: 4 }}>
           No contact for 1+ month
@@ -184,7 +231,7 @@ const ContactStatusCards = () => (
           Follow Up
         </Text>
         <Text style={{ color: "#FF8F00", fontSize: 24, fontWeight: "700" }}>
-          {contactStatus.yellow}
+        {engagementStats.yellow}
         </Text>
         <Text style={{ color: "#F57F17", fontSize: 12, marginTop: 4 }}>
           No contact for weeks
@@ -211,7 +258,7 @@ const ContactStatusCards = () => (
           Active
         </Text>
         <Text style={{ color: "#388E3C", fontSize: 24, fontWeight: "700" }}>
-          {contactStatus.green}
+        {engagementStats.green}
         </Text>
         <Text style={{ color: "#2E7D32", fontSize: 12, marginTop: 4 }}>
           Recently contacted
@@ -228,7 +275,7 @@ const AdminGroupsList = () => {
   const fetchUserGroups = async () => {
     try {
       setRefreshing(true);
-      
+
       // Get current authenticated user
       const { data: userData } = await supabase.auth.getUser();
       if (!userData?.user) {
@@ -240,9 +287,9 @@ const AdminGroupsList = () => {
 
       // Get all groups the user is a member of
       const { data: userGroups, error: userGroupsError } = await supabase
-        .from('group_members')
+        .from("group_members")
         .select("group_id, groups(id, name, created_at, image_url)")
-        .eq('user_id', userId)
+        .eq("user_id", userId)
         .limit(1000);
 
       if (userGroupsError) {
@@ -250,57 +297,58 @@ const AdminGroupsList = () => {
         return;
       }
       // Extract unique groups - ensure each item is a single object not an array
-   
-      const uniqueGroups = userGroups.map(item => item.groups);
+
+      const uniqueGroups = userGroups.map((item) => item.groups);
 
       // For each group, get member count and last message
       const groupsWithDetails = await Promise.all(
         uniqueGroups.map(async (group) => {
           // Get member count
           const { count: memberCount } = await supabase
-            .from('group_members')
-            .select('*', { count: 'exact' })
-            .eq('group_id', group.id);
+            .from("group_members")
+            .select("*", { count: "exact" })
+            .eq("group_id", group.id);
 
           // Get group members with profiles for avatars
           const { data: members } = await supabase
-            .from('group_members')
-            .select('users:user_id(id, name, profile_image)')
-            .eq('group_id', group.id)
+            .from("group_members")
+            .select("users:user_id(id, name, profile_image)")
+            .eq("group_id", group.id)
             .limit(3);
 
-          const memberImages = members?.map(m => m.users?.profile_image) || [];
+          const memberImages =
+            members?.map((m) => m.users?.profile_image) || [];
 
           // Get last message and unread count
           const { data: lastMessage } = await supabase
-            .from('group_messages')
-            .select('message, created_at')
-            .eq('group_id', group.id)
-            .order('created_at', { ascending: false })
+            .from("group_messages")
+            .select("message, created_at")
+            .eq("group_id", group.id)
+            .order("created_at", { ascending: false })
             .limit(1)
             .single();
 
           // Get unread message count for current user
           const { count: unreadCount } = await supabase
-            .from('group_messages')
-            .select('*', { count: 'exact' })
-            .eq('group_id', group.id)
-            .eq('is_read', false)
-            .neq('sender_id', userId);
-        
+            .from("group_messages")
+            .select("*", { count: "exact" })
+            .eq("group_id", group.id)
+            .eq("is_read", false)
+            .neq("sender_id", userId);
+
           return {
             id: group.id,
             name: group.name,
             image_url: group.image_url,
             members: memberCount || 0,
-            time: lastMessage?.created_at 
+            time: lastMessage?.created_at
               ? moment(lastMessage.created_at).fromNow()
               : "No activity",
             lastMessage: lastMessage?.message || "No messages yet",
             memberImages: memberImages,
             unreadCount: unreadCount || 0,
-            timestamp: lastMessage?.created_at 
-              ? new Date(lastMessage.created_at) 
+            timestamp: lastMessage?.created_at
+              ? new Date(lastMessage.created_at)
               : new Date(0),
           };
         })
@@ -348,13 +396,21 @@ const AdminGroupsList = () => {
           onPress={() => router.push(`/${group.id}`)}
         >
           <Image
-            source={{ uri: group.image_url || 'https://placeholder.com/500' }}
+            source={{ uri: group.image_url || "https://placeholder.com/500" }}
             style={{ width: "100%", height: 120 }}
             resizeMode="cover"
           />
-          <View style={{ padding: 12, flex: 1, justifyContent: "space-between" }}>
+          <View
+            style={{ padding: 12, flex: 1, justifyContent: "space-between" }}
+          >
             <View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
                 <Text
                   style={{
                     fontSize: 16,
@@ -368,29 +424,42 @@ const AdminGroupsList = () => {
                   {group.name}
                 </Text>
                 {group.unreadCount > 0 && (
-                  <View style={{
-                    backgroundColor: Colors.light.primaryColor,
-                    borderRadius: 10,
-                    minWidth: 20,
-                    height: 20,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}>
-                    <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>
+                  <View
+                    style={{
+                      backgroundColor: Colors.light.primaryColor,
+                      borderRadius: 10,
+                      minWidth: 20,
+                      height: 20,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "white",
+                        fontSize: 12,
+                        fontWeight: "600",
+                      }}
+                    >
                       {group.unreadCount}
                     </Text>
                   </View>
                 )}
               </View>
-              
-              <Text 
-                style={{ color: '#6b7280', fontSize: 12, marginBottom: 8, height: 30 }}
+
+              <Text
+                style={{
+                  color: "#6b7280",
+                  fontSize: 12,
+                  marginBottom: 8,
+                  height: 30,
+                }}
                 numberOfLines={2}
               >
                 {group.lastMessage}
               </Text>
             </View>
-            
+
             <View>
               <View
                 style={{
@@ -401,7 +470,9 @@ const AdminGroupsList = () => {
               >
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <Ionicons name="people-outline" size={14} color="#9ca3af" />
-                  <Text style={{ marginLeft: 4, color: "#9ca3af", fontSize: 12 }}>
+                  <Text
+                    style={{ marginLeft: 4, color: "#9ca3af", fontSize: 12 }}
+                  >
                     {group.members} members
                   </Text>
                 </View>
@@ -409,37 +480,41 @@ const AdminGroupsList = () => {
                   {group.time}
                 </Text>
               </View>
-              
+
               {/* User avatars */}
               {group.memberImages.length > 0 && (
-                <View style={{ flexDirection: 'row', marginTop: 8 }}>
+                <View style={{ flexDirection: "row", marginTop: 8 }}>
                   {group.memberImages.slice(0, 3).map((image, index) => (
-                    <Image 
+                    <Image
                       key={index}
-                      source={{ uri: image || 'https://via.placeholder.com/30' }}
+                      source={{
+                        uri: image || "https://via.placeholder.com/30",
+                      }}
                       style={{
                         width: 24,
                         height: 24,
                         borderRadius: 12,
                         marginLeft: index > 0 ? -10 : 0,
                         borderWidth: 1,
-                        borderColor: 'white'
+                        borderColor: "white",
                       }}
                     />
                   ))}
                   {group.members > 3 && (
-                    <View style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 12,
-                      backgroundColor: '#e5e7eb',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      marginLeft: -10,
-                      borderWidth: 1,
-                      borderColor: 'white'
-                    }}>
-                      <Text style={{ fontSize: 10, color: '#6b7280' }}>
+                    <View
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        backgroundColor: "#e5e7eb",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        marginLeft: -10,
+                        borderWidth: 1,
+                        borderColor: "white",
+                      }}
+                    >
+                      <Text style={{ fontSize: 10, color: "#6b7280" }}>
                         +{group.members - 3}
                       </Text>
                     </View>
@@ -450,9 +525,8 @@ const AdminGroupsList = () => {
           </View>
         </TouchableOpacity>
       ))}
-      
-      <TouchableOpacity
 
+      <TouchableOpacity
         style={{
           width: 220,
           height: 250, // Same height as other cards
@@ -465,7 +539,7 @@ const AdminGroupsList = () => {
           justifyContent: "center",
           alignItems: "center",
         }}
-        onPress={() => router.push('/Action')}
+        onPress={() => router.push("/Action")}
       >
         <Ionicons
           name="add-circle-outline"
@@ -610,10 +684,9 @@ const Header = () => {
           </Animated.View>
         </TouchableOpacity>
         <TouchableOpacity
-        onPress={() => {
-          router.push("/(tabs)/Profile");
-        }
-        }
+          onPress={() => {
+            router.push("/(tabs)/Profile");
+          }}
         >
           <Animated.Image
             source={{
@@ -634,87 +707,86 @@ const Header = () => {
 const UserGreeting = () => {
   const { userData, loading } = useUserData();
   return (
-
-  <View
-    style={{
-      flexDirection: "row",
-      alignItems: "center",
-      paddingVertical: 16,
-      paddingHorizontal: 4,
-      marginBottom: 12,
-    }}
-  >
-    <Image
-      source={{
-        uri: userData?.profile_image,
-      }}
+    <View
       style={{
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        marginRight: 16,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 16,
+        paddingHorizontal: 4,
+        marginBottom: 12,
       }}
-      resizeMode="cover"
-    />
-    <View style={{ flex: 1 }}>
-      <Text
-        style={{
-          color: Colors.light.text,
-          fontSize: 22,
-          fontWeight: "700",
-          marginBottom: 4,
+    >
+      <Image
+        source={{
+          uri: userData?.profile_image,
         }}
-      >
-        {getGreeting()}
-      </Text>
-      <View
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          marginBottom: 8,
+          width: 72,
+          height: 72,
+          borderRadius: 36,
+          marginRight: 16,
         }}
-      >
+        resizeMode="cover"
+      />
+      <View style={{ flex: 1 }}>
         <Text
           style={{
-            color: "#9ca3af",
-            fontSize: 16,
-            fontWeight: "600",
-            marginRight: 8,
+            color: Colors.light.text,
+            fontSize: 22,
+            fontWeight: "700",
+            marginBottom: 4,
           }}
         >
-          {userData?.name}
+          {getGreeting()}
         </Text>
-        <Badge
-          text={userData?.role}
-          color="white"
-          size="small"
-          backgroundColor="#10b981"
-          borderColor="transparent"
-        />
-      </View>
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            marginRight: 16,
+            marginBottom: 8,
           }}
         >
-          <Ionicons name="business-outline" size={16} color="#9ca3af" />
-          <Text style={{ marginLeft: 4, color: "#9ca3af", fontSize: 14 }}>
-           {userData?.church?.name}
+          <Text
+            style={{
+              color: "#9ca3af",
+              fontSize: 16,
+              fontWeight: "600",
+              marginRight: 8,
+            }}
+          >
+            {userData?.name}
           </Text>
+          <Badge
+            text={userData?.role}
+            color="white"
+            size="small"
+            backgroundColor="#10b981"
+            borderColor="transparent"
+          />
         </View>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Ionicons name="location-outline" size={16} color="#9ca3af" />
-          <Text style={{ marginLeft: 4, color: "#9ca3af", fontSize: 14 }}>
-            {userData?.church?.address}
-          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginRight: 16,
+            }}
+          >
+            <Ionicons name="business-outline" size={16} color="#9ca3af" />
+            <Text style={{ marginLeft: 4, color: "#9ca3af", fontSize: 14 }}>
+              {userData?.church?.name}
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Ionicons name="location-outline" size={16} color="#9ca3af" />
+            <Text style={{ marginLeft: 4, color: "#9ca3af", fontSize: 14 }}>
+              {userData?.church?.address}
+            </Text>
+          </View>
         </View>
       </View>
     </View>
-  </View>
-  )
+  );
 };
 
 export default AdminHome;

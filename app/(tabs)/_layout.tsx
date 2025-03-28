@@ -161,127 +161,156 @@ export default function BottomTabNavigator() {
 
   return (
     <>
-      <Tab.Navigator
-        screenOptions={({ navigation }) => ({
-          animation: "fade",
-          headerShown: false,
-          tabBarShowLabel: true,
-          tabBarLabelPosition: "below-icon",
-          lazy: false, // Loads screens eagerly for smoother transitions
-          tabBarHideOnKeyboard: true,
-          tabBarStyle: {
-        height: 80,
-        borderStyle: "solid",
-        borderTopWidth: 1,
-        borderTopColor: "#eee",
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: Platform.OS === 'android' ? 'white' : 'transparent',
-        elevation: 0,
-        shadowOpacity: 0,
-        paddingBottom: 8,
-          },
-          tabBarBackground: () => (
-        Platform.OS === 'android' ? null : (
-          <BlurView
-            intensity={50}
-            tint="light"
-            style={{
+      <>
+        <Tab.Navigator
+          screenOptions={({ navigation }) => ({
+            animation: "fade",
+            headerShown: false,
+            tabBarShowLabel: true,
+            tabBarLabelPosition: "below-icon",
+            lazy: false, // Loads screens eagerly for smoother transitions
+            tabBarHideOnKeyboard: true,
+            tabBarStyle: {
+          height: 80,
+          borderStyle: "solid",
+          borderTopWidth: 1,
+          borderTopColor: "#eee",
           position: "absolute",
-          top: 0,
+          bottom: 0,
           left: 0,
           right: 0,
-          bottom: 0,
+          backgroundColor: Platform.OS === 'android' ? 'white' : 'transparent',
+          elevation: 0,
+          shadowOpacity: 0,
+          paddingBottom: 8,
+            },
+            tabBarBackground: () => (
+          Platform.OS === 'android' ? null : (
+            <BlurView
+              intensity={50}
+              tint="light"
+              style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+              }}
+            />
+          )
+            ),
+            tabBarIconStyle: {
+          marginTop: 4,
+            },
+            tabBarActiveTintColor: Colors.light.primaryColor,
+            tabBarInactiveTintColor: "#999",
+            tabBarLabelStyle: {
+          fontSize: 12,
+          marginBottom: 4,
+            },
+          })}
+        >
+          <Tab.Screen
+            name="Home"
+            component={getHomeScreen()}
+            options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
             }}
           />
-        )
+          <Tab.Screen
+            name="Search"
+            component={TasksScreen}
+            options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="search" size={size} color={color} />
           ),
-          tabBarIconStyle: {
-        marginTop: 4,
-          },
-          tabBarActiveTintColor: Colors.light.primaryColor,
-          tabBarInactiveTintColor: "#999",
-          tabBarLabelStyle: {
-        fontSize: 12,
-        marginBottom: 4,
-          },
-        })}
-      >
-        <Tab.Screen
-          name="Home"
-          component={getHomeScreen()}
-          options={{
-        tabBarIcon: ({ color, size }) => (
-          <Ionicons name="home" size={size} color={color} />
-        ),
-          }}
-        />
-        <Tab.Screen
-          name="Search"
-          component={TasksScreen}
-          options={{
-        tabBarIcon: ({ color, size }) => (
-          <Ionicons name="search" size={size} color={color} />
-        ),
-          }}
-        />
-        <Tab.Screen
-          name="Action"
-          component={ActionScreen}
-          options={{
-        tabBarButton: (props) => (
-              <TouchableOpacity
-                onPress={
-                  () => router.push("/(tabs)/Action")
+            }}
+          />
+          <Tab.Screen
+            name="Action"
+            component={ActionScreen}
+            options={{
+          tabBarButton: (props) => (
+            <TouchableOpacity
+              onPress={() => {
+            // Show action modal when pressed
+            Alert.alert(
+              "Create New",
+              "What would you like to create?",
+              [
+                {
+              text: "Create New Member",
+              onPress: () => {
+                router.push("/CreateUser")
+              },
+              style: "default"
+                },
+                {
+              text: "Create New Group",
+              onPress: () => {
+               router.push("/Action")
+              },
+              style: "default"
+                },
+                {
+              text: "Cancel",
+              style: "cancel"
                 }
-                style={{
-                  top: -20,
-                  left: 0,
-                  right: 0,
-                  marginHorizontal: "auto",
-                  backgroundColor: Colors.light.primaryColor,
-                  borderRadius: 50,
-                  width: 50,
-                  height: 50,
-                  shadowColor: Colors.light.primaryColor,
-                  shadowOffset: {
-                    width: 2,
-                    height: 2,
-                  },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 3.84,
-                  elevation: 2,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <Ionicons name="add" size={32} color="white" />
-              </TouchableOpacity>
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Chats"
-          component={ChatsScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="chatbubbles" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Profile"
-          component={ProfileScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="person" size={size} color={color} />
-            ),
-          }}
-        />
-      </Tab.Navigator>
-    
+              ],
+              { cancelable: true }
+            );
+              }}
+              style={{
+            top: -20,
+            left: 0,
+            right: 0,
+            marginHorizontal: "auto",
+            backgroundColor: Colors.light.primaryColor,
+            borderRadius: 50,
+            width: 50,
+            height: 50,
+            shadowColor: Colors.light.primaryColor,
+            shadowOffset: {
+              width: 2,
+              height: 2,
+            },
+            shadowOpacity: 0.3,
+            shadowRadius: 3.84,
+            elevation: 2,
+            justifyContent: "center",
+            alignItems: "center",
+              }}
+            >
+              <Ionicons name="add" size={32} color="white" />
+            </TouchableOpacity>
+          ),
+            }}
+          />
+          <Tab.Screen
+            name="Chats"
+            component={ChatsScreen}
+            options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubbles" size={size} color={color} />
+          ),
+            }}
+          />
+          <Tab.Screen
+            name="Profile"
+            component={ProfileScreen}
+            options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
+            }}
+          />
+        </Tab.Navigator>
+
+        {/* Bottom Sheet for Create Group */}
+      
+      </>
     </>
   );
 }

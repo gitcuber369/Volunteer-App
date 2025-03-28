@@ -25,125 +25,134 @@ export default function GroupMembersScreen() {
   const [currentUserRole, setCurrentUserRole] = useState<string>("member");
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  useEffect(() => {
+useEffect(() => {
     const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // Get current user ID from Supabase auth
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        const currentUserId = user?.id;
+        setIsLoading(true);
+        try {
+            // Get current user ID from Supabase auth
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+            const currentUserId = user?.id;
 
-        // Fetch group data
-        const { data: groupData } = await supabase
-          .from("groups")
-          .select("name, image_url")
-          .eq("id", groupId)
-          .single();
+            // Fetch group data
+            const { data: groupData } = await supabase
+                .from("groups")
+                .select("name, image_url")
+                .eq("id", groupId)
+                .single();
 
-        // Fetch user role from users table
-        const { data: userData } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", currentUserId)
-          .single();
+            // Fetch user role from users table
+            const { data: userData } = await supabase
+                .from("users")
+                .select("role")
+                .eq("id", currentUserId)
+                .single();
 
-        // Fetch members data
-        const { data: membersData } = await supabase
-          .from("group_members")
-          .select("user_id, role, users(id, name, profile_image)")
-          .eq("group_id", groupId);
+            // Fetch members data
+            const { data: membersData } = await supabase
+                .from("group_members")
+                .select("user_id, role, users(id, name, profile_image)")
+                .eq("group_id", groupId);
 
-        // Find current user's role in the group
-        const userMember = membersData?.find(
-          (m) => m.user_id === currentUserId
-        );
-        if (userMember) {
-          setCurrentUserRole(userMember.role);
+            // Find current user's role in the group
+            const userMember = membersData?.find(
+                (m) => m.user_id === currentUserId
+            );
+            if (userMember) {
+                setCurrentUserRole(userMember.role);
+            }
+
+            // If user has a system role (MasterAdmin or Admin), override the group role
+            if (userData?.role === "MasterAdmin" || userData?.role === "Admin") {
+                setCurrentUserRole(userData.role);
+            }
+
+            const cleaned = (membersData || []).map((m) => ({
+                id: m.user_id,
+                name: m.users?.name || "Unknown",
+                profile_image: m.users?.profile_image || null,
+                role: m.role || "member",
+            }));
+
+            setGroupInfo(groupData);
+            setMembers(cleaned);
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        } finally {
+            setIsLoading(false);
         }
-
-        // If user has a system role (MasterAdmin or Admin), override the group role
-        if (userData?.role === "MasterAdmin" || userData?.role === "Admin") {
-          setCurrentUserRole(userData.role);
-        }
-
-        const cleaned = (membersData || []).map((m) => ({
-          id: m.user_id,
-          name: m.users?.name || "Unknown",
-          profile_image: m.users?.profile_image || null,
-          role: m.role || "member",
-        }));
-
-        setGroupInfo(groupData);
-        setMembers(cleaned);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setIsLoading(false);
-      }
     };
 
     fetchData();
-  }, [groupId]);
+}, [groupId]);
 
-  const removeFromGroup = async (userId: string) => {
+const removeFromGroup = async (userId: string) => {
     try {
-      const { error } = await supabase
-        .from("group_members")
-        .delete()
-        .eq("group_id", groupId)
-        .eq("user_id", userId);
+        const { error } = await supabase
+            .from("group_members")
+            .delete()
+            .eq("group_id", groupId)
+            .eq("user_id", userId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Update the UI by removing the member
-      setMembers(members.filter((member) => member.id !== userId));
+        // Update the UI by removing the member
+        setMembers(members.filter((member) => member.id !== userId));
     } catch (error) {
-      console.error("Error removing member:", error);
+        console.error("Error removing member:", error);
     }
-  };
+};
 
-  const makeTeamLeader = async (userId: string) => {
+const makeTeamLeader = async (userId: string) => {
     try {
-      // Update the selected user to TeamLeader
-      const { error } = await supabase
-        .from("group_members")
-        .update({ role: "TeamLeader" })
-        .eq("group_id", groupId)
-        .eq("user_id", userId);
+        // Start a transaction to update both tables
+        // Update the selected user to TeamLeader in group_members table
+        const { error: groupMemberError } = await supabase
+            .from("group_members")
+            .update({ role: "TeamLeader" })
+            .eq("group_id", groupId)
+            .eq("user_id", userId);
 
-      if (error) throw error;
+        if (groupMemberError) throw groupMemberError;
 
-      // Update the UI to reflect the change
-      setMembers(
-        members.map((member) =>
-          member.id === userId ? { ...member, role: "TeamLeader" } : member
-        )
-      );
+        // Update the user's role in the users table
+        const { error: userError } = await supabase
+            .from("users")
+            .update({ role: "TeamLeader" })
+            .eq("id", userId);
+
+        if (userError) throw userError;
+
+        // Update the UI to reflect the change
+        setMembers(
+            members.map((member) =>
+                member.id === userId ? { ...member, role: "TeamLeader" } : member
+            )
+        );
     } catch (error) {
-      console.error("Error updating role:", error);
+        console.error("Error updating role:", error);
     }
-  };
+};
 
-  // User can manage members if they are MasterAdmin, Admin, or TeamLeader
-  const canManageMembers =
+// User can manage members if they are MasterAdmin, Admin, or TeamLeader
+const canManageMembers =
     currentUserRole === "MasterAdmin" ||
     currentUserRole === "Admin" ||
     currentUserRole === "TeamLeader";
 
-  const getRoleBadgeColor = (role: string) => {
+const getRoleBadgeColor = (role: string) => {
     switch (role.toLowerCase()) {
-      case "teamleader":
-        return { bg: "#E3F2FD", text: "#1565C0" };
-      case "admin":
-        return { bg: "#EDE7F6", text: "#5E35B1" };
-      case "masteradmin":
-        return { bg: "#FFEBEE", text: "#C62828" };
-      default:
-        return { bg: "#E8F5E9", text: "#2E7D32" };
+        case "teamleader":
+            return { bg: "#E3F2FD", text: "#1565C0" };
+        case "admin":
+            return { bg: "#EDE7F6", text: "#5E35B1" };
+        case "masteradmin":
+            return { bg: "#FFEBEE", text: "#C62828" };
+        default:
+            return { bg: "#E8F5E9", text: "#2E7D32" };
     }
-  };
+};
 
   if (isLoading) {
     return (

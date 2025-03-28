@@ -27,7 +27,6 @@ const Signup = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isChurch, setIsChurch] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [churchName, setChurchName] = useState("");
   const [churchAddress, setChurchAddress] = useState("");
@@ -53,7 +52,7 @@ const Signup = () => {
     }
   };
 
-  // Function to upload an image to Supabase Storage - Fixed version
+  // Function to upload an image to Supabase Storage
   const uploadImage = async (fileUri: string, path: string) => {
     try {
       const fileExt = fileUri.split(".").pop();
@@ -106,37 +105,34 @@ const Signup = () => {
         console.log("Profile Image Uploaded:", uploadedProfileImage);
       }
 
-      if (isChurch && churchLogo) {
+      if (churchLogo) {
         uploadedChurchLogo = await uploadImage(churchLogo, "churches");
         console.log("Church Logo Uploaded:", uploadedChurchLogo);
       }
 
-      // If registering as a church, create the church first
-      let churchId = null;
-      if (isChurch) {
-        console.log("Creating church...");
-        const { data: churchData, error: churchError } = await supabase
-          .from("churches")
-          .insert([
-            {
-              name: churchName,
-              address: churchAddress,
-              logo: uploadedChurchLogo,
-            },
-          ])
-          .select()
-          .single();
+      // Create the church
+      console.log("Creating church...");
+      const { data: churchData, error: churchError } = await supabase
+        .from("churches")
+        .insert([
+          {
+            name: churchName,
+            address: churchAddress,
+            logo: uploadedChurchLogo,
+          },
+        ])
+        .select()
+        .single();
 
-        if (churchError) {
-          console.error("Church Creation Error:", churchError);
-          throw churchError;
-        }
-
-        churchId = churchData.id;
-        console.log("Church Created Successfully:", churchId);
+      if (churchError) {
+        console.error("Church Creation Error:", churchError);
+        throw churchError;
       }
 
-      // Register user in Supabase Auth (No email verification)
+      const churchId = churchData.id;
+      console.log("Church Created Successfully:", churchId);
+
+      // Register user in Supabase Auth
       console.log("Creating user...");
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -162,12 +158,12 @@ const Signup = () => {
 
       // Insert user data into the `users` table
       console.log("Inserting user into database...");
-      const role = isChurch ? "MasterAdmin" : "Volunteer";
+      const role = "MasterAdmin";
       const { error: userInsertError } = await supabase.from("users").insert([
         {
           id: userId,
           email,
-          name, // Store display name in users table
+          name,
           role,
           church_id: churchId,
           profile_image: uploadedProfileImage,
@@ -183,7 +179,7 @@ const Signup = () => {
 
       Alert.alert("Signup Successful", "You are now logged in!");
 
-      // **Auto-login user after signup**
+      // Auto-login user after signup
       console.log("Logging in user...");
 
       const { error: loginError } = await supabase.auth.signInWithPassword({
@@ -200,29 +196,34 @@ const Signup = () => {
       if (session) {
         await AsyncStorage.setItem("session_token", session.access_token);
         await AsyncStorage.setItem("user_role", role);
+        await AsyncStorage.setItem("church_id", churchId.toString());
         console.log("Session token and role stored:", session.access_token, role);
       }
       
-
-      // **Redirect user based on role**
-      switch (role) {
-        case "MasterAdmin":
-          router.replace({
-        pathname: "/(tabs)/Home/MasterAdminHome",
-        params: { role: "MasterAdminHome" },
-          });
-          break;
-        case "Volunteer":
-          router.replace({
-        pathname: "/(tabs)/Home/VolunteerHome",
-        params: { role: "VolunteerHome" },
-          });
-          break;
-       
-        default:
-          router.replace("/(auth)/sign-in");
-          break;
+      // Check if there are members in the church
+      const { data: members, error: membersError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("church_id", churchId)
+        .neq("id", userId) // Exclude the admin
+        .limit(1);
+        
+      if (membersError) {
+        console.error("Error checking members:", membersError);
       }
+      
+      // If no members, redirect to create user page
+      if (!members?.length) {
+        console.log("No members found, redirecting to create user page");
+        router.replace("/CreateUser");
+      } else {
+        // Redirect to MasterAdmin home
+        router.replace({
+          pathname: "/(tabs)/Home/MasterAdminHome",
+          params: { role: "MasterAdminHome" },
+        });
+      }
+      
     } catch (error: any) {
       console.error("Signup Error:", error);
       Alert.alert("Signup Failed", error.message || "An unexpected error occurred");
@@ -245,12 +246,12 @@ const Signup = () => {
           contentContainerStyle={styles.scrollContent}
         >
           <View style={styles.content}>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join our volunteer community</Text>
+            <Text style={styles.title}>Register Your Church</Text>
+            <Text style={styles.subtitle}>Create a church administrator account</Text>
 
             <View style={styles.form}></View>
             <View style={styles.profileImageContainer}>
-              <Text style={styles.label}>Profile Image</Text>
+              <Text style={styles.label}>Admin Profile Image</Text>
               <TouchableOpacity
                 style={styles.imageSelector}
                 onPress={() => pickImage(setProfileImage)}
@@ -277,7 +278,7 @@ const Signup = () => {
               </TouchableOpacity>
             </View>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Name</Text>
+              <Text style={styles.label}>Admin Name</Text>
               <View style={styles.inputWrapper}>
                 <MaterialIcons
                   name="person"
@@ -335,131 +336,106 @@ const Signup = () => {
               </View>
             </View>
 
-            <Pressable
-              style={styles.checkboxContainer}
-              onPress={() => setIsChurch(!isChurch)}
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  isChurch && {
-                    backgroundColor: Colors.light.primaryColor,
-                    borderColor: Colors.light.primaryColor,
-                  },
-                ]}
-              >
-                {isChurch && (
-                  <MaterialIcons name="check" size={18} color="white" />
-                )}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Church Name</Text>
+              <View style={styles.inputWrapper}>
+                <MaterialIcons
+                  name="church"
+                  size={20}
+                  color={Colors.light.primaryColor}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  value={churchName}
+                  onChangeText={setChurchName}
+                  style={styles.input}
+                  placeholder="Enter church name"
+                  placeholderTextColor="#999"
+                />
               </View>
-              <Text style={styles.checkboxLabel}>Register as Church</Text>
-            </Pressable>
-
-            {isChurch && (
-              <>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Church Name</Text>
-                  <View style={styles.inputWrapper}>
-                    <MaterialIcons
-                      name="church"
-                      size={20}
-                      color={Colors.light.primaryColor}
-                      style={styles.inputIcon}
-                    />
-                    <TextInput
-                      value={churchName}
-                      onChangeText={setChurchName}
-                      style={styles.input}
-                      placeholder="Enter church name"
-                      placeholderTextColor="#999"
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Church Address</Text>
-                  <View style={styles.inputWrapper}>
-                    <MaterialIcons
-                      name="location-on"
-                      size={20}
-                      color={Colors.light.primaryColor}
-                      style={styles.inputIcon}
-                    />
-                    <TextInput
-                      value={churchAddress}
-                      onChangeText={setChurchAddress}
-                      style={styles.input}  
-                      placeholder="Enter church address"
-                      placeholderTextColor="#999"
-                      multiline
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.profileImageContainer}>
-                  <Text style={styles.label}>Church Logo</Text>
-                  <TouchableOpacity
-                    style={styles.imageSelector}
-                    onPress={() => pickImage(setChurchLogo)}
-                  >
-                    {churchLogo ? (
-                      <Image
-                        source={{ uri: churchLogo }}
-                        style={{ width: 100, height: 100, borderRadius: 50 }}
-                      />
-                    ) : (
-                      <View style={styles.imagePlaceholder}>
-                        <MaterialIcons
-                          name="image"
-                          size={24}
-                          color={Colors.light.primaryColor}
-                        />
-                      </View>
-                    )}
-                    <Text style={styles.imageText}>
-                      {churchLogo
-                        ? "Change church logo"
-                        : "Tap to select a church logo"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handleSignup}
-              disabled={isLoading}
-            >
-              <LinearGradient
-                colors={[Colors.light.primaryColor, Colors.light.primaryColor]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.gradient}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="white" size="small" />
-                ) : (
-                  <>
-                    <Text style={styles.buttonText}>Sign Up</Text>
-                    <MaterialIcons
-                      name="arrow-forward" 
-                      size={20}
-                      color="white"
-                    />
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>Already have an account?</Text>
-              <TouchableOpacity
-                onPress={() => router.replace("/(auth)/sign-in")}
-              >
-                <Text style={styles.loginText}>Log in</Text>
-              </TouchableOpacity>
             </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Church Address</Text>
+              <View style={styles.inputWrapper}>
+                <MaterialIcons
+                  name="location-on"
+                  size={20}
+                  color={Colors.light.primaryColor}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  value={churchAddress}
+                  onChangeText={setChurchAddress}
+                  style={styles.input}  
+                  placeholder="Enter church address"
+                  placeholderTextColor="#999"
+                  multiline
+                />
+              </View>
+            </View>
+
+            <View style={styles.profileImageContainer}></View>
+              <Text style={styles.label}>Church Logo</Text>
+              <TouchableOpacity
+                style={styles.imageSelector}
+                onPress={() => pickImage(setChurchLogo)}
+              >
+                {churchLogo ? (
+                  <Image
+                    source={{ uri: churchLogo }}
+                    style={{ width: 100, height: 100, borderRadius: 50 }}
+                  />
+                ) : (
+                  <View style={styles.imagePlaceholder}>
+                    <MaterialIcons
+                      name="image"
+                      size={24}
+                      color={Colors.light.primaryColor}
+                    />
+                  </View>
+                )}
+                <Text style={styles.imageText}>
+                  {churchLogo
+                    ? "Change church logo"
+                    : "Tap to select a church logo"}
+                </Text>
+              </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleSignup}
+            disabled={isLoading}
+          >
+            <LinearGradient
+              colors={[Colors.light.primaryColor, Colors.light.primaryColor]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.gradient}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <>
+                  <Text style={styles.buttonText}>Register Church</Text>
+                  <MaterialIcons
+                    name="arrow-forward" 
+                    size={20}
+                    color="white"
+                  />
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Already have an account?</Text>
+            <TouchableOpacity
+              onPress={() => router.replace("/(auth)/sign-in")}
+            >
+              <Text style={styles.loginText}>Log in</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </LinearGradient>
@@ -530,26 +506,6 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     color: "#333",
-  },
-  checkboxContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderWidth: 2,
-    borderColor: "#E8E8E8",
-    borderRadius: 6,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-  },
-  checkboxLabel: {
-    fontSize: 16,
-    color: "#444",
   },
   button: {
     marginTop: 20,

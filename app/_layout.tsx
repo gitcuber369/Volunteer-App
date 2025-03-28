@@ -76,6 +76,7 @@ export default function RootLayout() {
             <Stack.Screen name="Chat/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="[groupId]" options={{ headerShown: false }} />
             <Stack.Screen name="groupMembers/[groupId]" options={{ headerShown: false }} />
+            <Stack.Screen name="CreateUser" options={{ headerShown: false }} />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>
