@@ -7,7 +7,6 @@ import * as FileSystem from "expo-file-system";
 import { supabase } from "@/service/supabaseClient";
 import { router } from "expo-router";
 import { decode } from "base64-arraybuffer";
-import { Picker } from "@react-native-picker/picker";
 import {
   View,
   Text,

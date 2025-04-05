@@ -87,12 +87,12 @@ const SignIn = () => {
             params: { role: "AdminHome" },
           });
           break;
-          case "TeamLeader":
-            router.replace({
-              pathname: "/(tabs)/Home/TeamLead",
-              params: { role: "TeamLead" },
-            });
-            break;
+        case "TeamLeader":
+          router.replace({
+            pathname: "/(tabs)/Home/TeamLead",
+            params: { role: "TeamLead" },
+          });
+          break;
         default:
           router.replace({
             pathname: "/(tabs)/Home/HomeScreen",
@@ -163,7 +163,10 @@ const SignIn = () => {
                 />
               </View>
 
-              <TouchableOpacity style={styles.forgotPassword}>
+              <TouchableOpacity
+                onPress={() => router.push("/forgetpassword")}
+                style={styles.forgotPassword}
+              >
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
 

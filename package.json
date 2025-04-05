@@ -65,7 +65,6 @@
     "react-native-gesture-handler": "^2.24.0",
     "react-native-gifted-charts": "^1.4.57",
     "react-native-pager-view": "6.5.1",
-    "react-native-picker": "^4.3.7",
     "react-native-reanimated": "^3.16.7",
     "react-native-safe-area-context": "^5.2.0",
     "react-native-screens": "^4.7.0",
