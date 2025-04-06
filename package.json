@@ -14,6 +14,9 @@
   "jest": {
     "preset": "jest-expo"
   },
+  "resolutions": {
+    "esprima": "https://github.com/ariya/esprima.git#a65a3eb93b9a5dce9a1184ca2d1bd0b184c6b8fd"
+  },
   "dependencies": {
     "@expo/vector-icons": "^14.0.2",
     "@gluestack-ui/icon": "^0.1.25",
